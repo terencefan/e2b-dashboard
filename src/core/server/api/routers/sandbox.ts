@@ -12,6 +12,7 @@ import {
 import { createSandboxesRepository } from '@/core/modules/sandboxes/repository.server'
 import { throwTRPCErrorFromRepoError } from '@/core/server/adapters/errors'
 import { withAuthedRequestRepository } from '@/core/server/api/middlewares/repository'
+import { executionPoolHeaders } from '@/core/server/execution-pool'
 import {
   resolveE2BDomain,
   resolveInfraApiUrl,
@@ -233,6 +234,7 @@ export const sandboxRouter = createTRPCRouter({
 
       const connectionOpts = {
         apiUrl: resolveInfraApiUrl(),
+        headers: await executionPoolHeaders(),
         domain: resolveE2BDomain(),
         sandboxUrl: resolveSandboxUrl(),
         apiKey,
@@ -321,6 +323,7 @@ export const sandboxRouter = createTRPCRouter({
 
       const connectionOpts = {
         apiUrl: resolveInfraApiUrl(),
+        headers: await executionPoolHeaders(),
         domain: resolveE2BDomain(),
         sandboxUrl: resolveSandboxUrl(),
         apiKey,
@@ -377,6 +380,7 @@ export const sandboxRouter = createTRPCRouter({
 
       const connectionOpts = {
         apiUrl: resolveInfraApiUrl(),
+        headers: await executionPoolHeaders(),
         domain: resolveE2BDomain(),
         sandboxUrl: resolveSandboxUrl(),
         apiKey,
@@ -416,6 +420,7 @@ export const sandboxRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const sandbox = await Sandbox.connect(input.sandboxId, {
         apiUrl: resolveInfraApiUrl(),
+        headers: await executionPoolHeaders(),
         domain: resolveE2BDomain(),
         sandboxUrl: resolveSandboxUrl(),
         timeoutMs: TERMINAL_SANDBOX_TIMEOUT_MS,

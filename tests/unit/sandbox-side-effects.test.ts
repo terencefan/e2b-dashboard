@@ -1,3 +1,7 @@
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ get: () => undefined }),
+}))
+
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'

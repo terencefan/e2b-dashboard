@@ -1,3 +1,7 @@
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ get: () => undefined }),
+}))
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTRPCContext } from '@/core/server/trpc/init'
 

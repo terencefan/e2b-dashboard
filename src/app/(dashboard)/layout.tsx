@@ -4,6 +4,7 @@ import type { Metadata } from 'next/types'
 import { COOKIE_KEYS } from '@/configs/cookies'
 import { METADATA } from '@/configs/metadata'
 import { getApiKey } from '@/core/server/auth'
+import { resolveExecutionPool } from '@/core/server/execution-pool'
 import { resolveBrowserRuntimeConfig } from '@/core/server/runtime-config'
 import { ClientConfigProvider } from '@/features/client-config-provider'
 import DashboardLayoutView from '@/features/dashboard/layouts/layout'
@@ -35,7 +36,10 @@ export default async function DashboardLayout({
     redirect('/')
   }
 
-  const runtimeConfig = resolveBrowserRuntimeConfig()
+  const runtimeConfig = {
+    ...resolveBrowserRuntimeConfig(),
+    executionPool: await resolveExecutionPool(),
+  }
   const sidebarState = cookieStore.get(COOKIE_KEYS.SIDEBAR_STATE)?.value
   const defaultOpen = sidebarState === 'true'
   const timezone = parseTimezone(

@@ -62,7 +62,7 @@ export async function openTerminalSandbox({
 
   const storedTerminalSession = forceNewSandbox
     ? null
-    : readStoredTerminalSession()
+    : readStoredTerminalSession(runtimeConfig.executionPool)
 
   let sandbox: Sandbox
 
@@ -83,7 +83,7 @@ export async function openTerminalSandbox({
         'Failed to connect to terminal sandbox'
       )
     } catch {
-      clearStoredTerminalSession()
+      clearStoredTerminalSession(runtimeConfig.executionPool)
       onStatus('Stored terminal sandbox is unavailable.\r\n')
       onStatus(`Starting ${template} terminal sandbox...\r\n`)
       sandbox = await acquireTerminalSandbox(
@@ -104,10 +104,13 @@ export async function openTerminalSandbox({
   }
 
   if (shouldStoreSession ?? true) {
-    writeStoredTerminalSession({
-      sandboxId: sandbox.sandboxId,
-      template,
-    })
+    writeStoredTerminalSession(
+      {
+        sandboxId: sandbox.sandboxId,
+        template,
+      },
+      runtimeConfig.executionPool
+    )
   }
 
   return {
