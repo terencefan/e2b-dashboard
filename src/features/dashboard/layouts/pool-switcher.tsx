@@ -11,7 +11,7 @@ import {
 } from '@/ui/primitives/select'
 
 export function PoolSwitcher() {
-  const { executionPool = 'production' } = useClientConfig()
+  const { executionPool = 'pilot' } = useClientConfig()
   const [switching, setSwitching] = useState(false)
 
   return (
@@ -21,10 +21,10 @@ export function PoolSwitcher() {
       onValueChange={(value) => {
         if (value !== 'production' && value !== 'pilot') return
         setSwitching(true)
-        // biome-ignore lint/suspicious/noDocumentCookie: Keep preference support in browsers without Cookie Store API.
-        document.cookie = `e2b_pool=${value}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`
-        // A new document discards caches, in-flight requests and terminal sessions.
-        location.assign('/sandboxes')
+        // Reloading discards requests and terminal state from the previous pool.
+        const destination = new URL('/sandboxes', location.origin)
+        destination.searchParams.set('pool', value)
+        location.assign(destination.href)
       }}
     >
       <SelectTrigger aria-label="Execution pool" className="w-36 shrink-0">

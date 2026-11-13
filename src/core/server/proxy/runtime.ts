@@ -39,9 +39,14 @@ export async function runDashboardProxy(request: NextRequest) {
     // `/?tab=` deep links are resolved by the root page itself; only bare `/`
     // short-circuits here.
     if (!tab) {
-      return NextResponse.redirect(
-        new URL(PROTECTED_URLS.SANDBOXES, request.url)
+      const destination = new URL(PROTECTED_URLS.SANDBOXES, request.url)
+      destination.searchParams.set(
+        'pool',
+        request.nextUrl.searchParams.get('pool') === 'production'
+          ? 'production'
+          : 'pilot'
       )
+      return NextResponse.redirect(destination)
     }
   }
 
@@ -49,6 +54,34 @@ export async function runDashboardProxy(request: NextRequest) {
     const returnToUrl = new URL('/', request.url)
     returnToUrl.searchParams.set('returnTo', `${pathname}${search}`)
     return NextResponse.redirect(returnToUrl)
+  }
+
+  if (isProtectedRoute(pathname)) {
+    const selected = request.nextUrl.searchParams.get('pool')
+    if (selected !== 'pilot' && selected !== 'production') {
+      const destination = request.nextUrl.clone()
+      let pool = 'pilot'
+      // Internal navigation retains the current pool, direct entry defaults to Pilot.
+      try {
+        const referer = new URL(request.headers.get('referer') ?? '')
+        if (
+          referer.origin === request.nextUrl.origin &&
+          referer.searchParams.get('pool') === 'production'
+        )
+          pool = 'production'
+      } catch {}
+      destination.searchParams.set('pool', pool)
+      return NextResponse.redirect(destination)
+    }
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-dashboard-pool', selected)
+    const response = NextResponse.next({ request: { headers: requestHeaders } })
+    response.cookies.set('e2b_pool', selected, {
+      path: '/',
+      sameSite: 'lax',
+      secure: request.nextUrl.protocol === 'https:',
+    })
+    return response
   }
 
   return NextResponse.next({ request })

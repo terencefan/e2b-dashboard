@@ -22,7 +22,9 @@ describe('runDashboardProxy', () => {
     const response = await runDashboardProxy(makeRequest('/', 'e2b_key'))
 
     expect(response.status).toBe(307)
-    expect(response.headers.get('location')).toBe(`${BASE}/sandboxes`)
+    expect(response.headers.get('location')).toBe(
+      `${BASE}/sandboxes?pool=pilot`
+    )
   })
 
   it('lets /?tab= through so the root page resolves the deep link', async () => {
@@ -56,7 +58,9 @@ describe('runDashboardProxy', () => {
     '/sandboxes',
     '/templates/list',
   ])('passes %s through when the api key cookie is present', async (path) => {
-    const response = await runDashboardProxy(makeRequest(path, 'e2b_key'))
+    const response = await runDashboardProxy(
+      makeRequest(`${path}?pool=pilot`, 'e2b_key')
+    )
 
     expect(response.headers.get('location')).toBeNull()
   })
@@ -64,11 +68,15 @@ describe('runDashboardProxy', () => {
   it('treats E2B_API_KEY env as authenticated', async () => {
     process.env.E2B_API_KEY = 'e2b_env_key'
 
-    const protectedResponse = await runDashboardProxy(makeRequest('/sandboxes'))
+    const protectedResponse = await runDashboardProxy(
+      makeRequest('/sandboxes?pool=pilot')
+    )
     expect(protectedResponse.headers.get('location')).toBeNull()
 
     const rootResponse = await runDashboardProxy(makeRequest('/'))
-    expect(rootResponse.headers.get('location')).toBe(`${BASE}/sandboxes`)
+    expect(rootResponse.headers.get('location')).toBe(
+      `${BASE}/sandboxes?pool=pilot`
+    )
   })
 
   it('preserves the query string in returnTo', async () => {
@@ -86,5 +94,33 @@ describe('runDashboardProxy', () => {
     const response = await runDashboardProxy(makeRequest('/some-public-page'))
 
     expect(response.headers.get('location')).toBeNull()
+  })
+})
+
+describe('pool URL selection', () => {
+  it('defaults a direct entry to Pilot even with a previous Production cookie', async () => {
+    const request = makeRequest('/sandboxes?search=hello', 'e2b_key')
+    request.cookies.set('e2b_pool', 'production')
+    const response = await runDashboardProxy(request)
+    expect(response.headers.get('location')).toBe(
+      `${BASE}/sandboxes?search=hello&pool=pilot`
+    )
+  })
+  it('retains Production for internal navigation', async () => {
+    const request = makeRequest('/templates/list', 'e2b_key')
+    request.headers.set('referer', `${BASE}/sandboxes?pool=production`)
+    const response = await runDashboardProxy(request)
+    expect(response.headers.get('location')).toBe(
+      `${BASE}/templates/list?pool=production`
+    )
+  })
+  it('applies an explicit URL pool immediately despite an old cookie', async () => {
+    const request = makeRequest('/sandboxes?pool=pilot', 'e2b_key')
+    request.cookies.set('e2b_pool', 'production')
+    const response = await runDashboardProxy(request)
+    expect(response.headers.get('x-middleware-request-x-dashboard-pool')).toBe(
+      'pilot'
+    )
+    expect(response.cookies.get('e2b_pool')?.value).toBe('pilot')
   })
 })
