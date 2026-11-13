@@ -107,6 +107,10 @@ async function request<T>(path = '', options: RequestInit = {}): Promise<T> {
   return data
 }
 
+function columnLayout(id: string) {
+  return id === 'name' || id === 'id' ? 'min-w-0 grow shrink-0' : 'shrink-0'
+}
+
 function Timestamp({ value }: { value: string }) {
   const { timezone } = useTimezone()
   const formatted = formatDateParts(value, {
@@ -323,6 +327,18 @@ export default function ApiKeysPage() {
     enableColumnResizing: false,
   })
   const columnSizes = useColumnSizeVars(table)
+  const minimumTableWidth = table
+    .getAllLeafColumns()
+    .reduce(
+      (width, column) =>
+        width +
+        (column.id === 'name'
+          ? 160
+          : column.id === 'id'
+            ? 120
+            : column.getSize()),
+      24 * (columns.length - 1)
+    )
   const rows = table.getRowModel().rows
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col pt-2 md:pt-3">
@@ -416,10 +432,10 @@ export default function ApiKeysPage() {
             />
           ) : (
             <DataTable
-              className={`h-full overflow-y-auto px-3 md:px-6 ${SIDEBAR_TRANSITION_CLASSNAMES}`}
+              className={`h-full w-full overflow-y-auto px-3 [--api-key-table-gutter:24px] md:px-6 md:[--api-key-table-gutter:48px] ${SIDEBAR_TRANSITION_CLASSNAMES}`}
               style={{
                 ...columnSizes,
-                minWidth: table.getTotalSize() + 24 * (columns.length - 1),
+                minWidth: `calc(${minimumTableWidth}px + var(--api-key-table-gutter))`,
               }}
             >
               <DataTableHeader className="sticky top-0 z-30 bg-bg shadow-xs">
@@ -431,6 +447,7 @@ export default function ApiKeysPage() {
                     {group.headers.map((header) => (
                       <DataTableHead
                         key={header.id}
+                        className={columnLayout(header.column.id)}
                         header={header}
                         sorting={
                           sorting.find((sort) => sort.id === header.id)?.desc
@@ -453,7 +470,11 @@ export default function ApiKeysPage() {
                   >
                     <RowHoverFrame />
                     {row.getVisibleCells().map((cell) => (
-                      <DataTableCell key={cell.id} cell={cell}>
+                      <DataTableCell
+                        key={cell.id}
+                        cell={cell}
+                        className={columnLayout(cell.column.id)}
+                      >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
