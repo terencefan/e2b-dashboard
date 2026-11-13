@@ -108,7 +108,9 @@ async function request<T>(path = '', options: RequestInit = {}): Promise<T> {
 }
 
 function columnLayout(id: string) {
-  return id === 'name' || id === 'id' ? 'min-w-0 grow shrink-0' : 'shrink-0'
+  if (id === 'name') return 'min-w-[160px] grow'
+  if (id === 'id') return 'min-w-[120px] grow'
+  return 'shrink-0'
 }
 
 function Timestamp({ value }: { value: string }) {
