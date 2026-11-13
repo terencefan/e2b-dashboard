@@ -2,38 +2,33 @@
 
 import { useState } from 'react'
 import { useClientConfig } from '@/features/client-config-provider'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/ui/primitives/select'
+import { Button } from '@/ui/primitives/button'
 
 export function PoolSwitcher() {
   const { executionPool = 'pilot' } = useClientConfig()
   const [switching, setSwitching] = useState(false)
+  const nextPool = executionPool === 'pilot' ? 'production' : 'pilot'
+  const label = executionPool === 'pilot' ? 'Pilot' : 'Production'
+  const nextLabel = nextPool === 'pilot' ? 'Pilot' : 'Production'
 
   return (
-    <Select
-      value={executionPool}
+    <Button
+      type="button"
+      variant="secondary"
+      aria-label="Execution pool"
+      title={`Current: ${label}. Switch to ${nextLabel}`}
+      className="w-36 shrink-0 gap-2"
       disabled={switching}
-      onValueChange={(value) => {
-        if (value !== 'production' && value !== 'pilot') return
+      onClick={() => {
         setSwitching(true)
         // Reloading discards requests and terminal state from the previous pool.
         const destination = new URL('/sandboxes', location.origin)
-        destination.searchParams.set('pool', value)
+        destination.searchParams.set('pool', nextPool)
         location.assign(destination.href)
       }}
     >
-      <SelectTrigger aria-label="Execution pool" className="w-36 shrink-0">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="production">Production</SelectItem>
-        <SelectItem value="pilot">Pilot</SelectItem>
-      </SelectContent>
-    </Select>
+      {label}
+      <span aria-hidden="true">⇄</span>
+    </Button>
   )
 }
