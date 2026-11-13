@@ -23,6 +23,7 @@ const DASHBOARD_LAYOUT_CONFIGS: Record<
   string,
   (pathname: string) => DashboardLayoutConfig
 > = {
+  '/api-keys': () => ({ title: 'API Keys', type: 'default' }),
   // sandboxes
   '/sandboxes': () => ({
     title: 'Sandboxes',

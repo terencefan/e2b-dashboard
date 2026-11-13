@@ -1,4 +1,5 @@
 export const PROTECTED_URLS = {
+  API_KEYS: '/api-keys',
   SANDBOXES: '/sandboxes',
 
   SANDBOX: (sandboxId: string) => `/sandboxes/${sandboxId}/monitoring`,
@@ -28,6 +29,7 @@ export const PROTECTED_URLS = {
  * is public.
  */
 export const PROTECTED_ROUTE_PREFIXES: readonly string[] = [
+  '/api-keys',
   '/sandboxes',
   '/templates',
 ]

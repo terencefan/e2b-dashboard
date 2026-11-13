@@ -1,4 +1,9 @@
-import { type Icon, SandboxIcon, TemplateIcon } from '@/ui/primitives/icons'
+import {
+  type Icon,
+  KeyIcon,
+  SandboxIcon,
+  TemplateIcon,
+} from '@/ui/primitives/icons'
 import { PROTECTED_URLS } from './urls'
 
 export type SidebarNavItem = {
@@ -10,6 +15,12 @@ export type SidebarNavItem = {
 }
 
 export const SIDEBAR_MAIN_LINKS: SidebarNavItem[] = [
+  {
+    label: 'API Keys',
+    href: PROTECTED_URLS.API_KEYS,
+    icon: KeyIcon,
+    activeMatch: '/api-keys',
+  },
   {
     label: 'Sandboxes',
     href: PROTECTED_URLS.SANDBOXES,
