@@ -65,7 +65,10 @@ export async function runDashboardProxy(request: NextRequest) {
       try {
         const referer = new URL(request.headers.get('referer') ?? '')
         if (
-          referer.origin === request.nextUrl.origin &&
+          referer.host ===
+            (request.headers.get('x-forwarded-host') ??
+              request.headers.get('host') ??
+              request.nextUrl.host) &&
           referer.searchParams.get('pool') === 'production'
         )
           pool = 'production'

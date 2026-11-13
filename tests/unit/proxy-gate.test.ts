@@ -124,3 +124,14 @@ describe('pool URL selection', () => {
     expect(response.cookies.get('e2b_pool')?.value).toBe('pilot')
   })
 })
+
+it('retains the pool behind a proxy that terminates HTTPS', async () => {
+  const request = new NextRequest('http://dashboard.internal/templates/list')
+  request.cookies.set(COOKIE_KEYS.API_KEY, 'e2b_key')
+  request.headers.set('x-forwarded-host', 'dashboard.local')
+  request.headers.set('referer', `${BASE}/sandboxes?pool=production`)
+  const response = await runDashboardProxy(request)
+  expect(
+    new URL(response.headers.get('location') as string).searchParams.get('pool')
+  ).toBe('production')
+})
