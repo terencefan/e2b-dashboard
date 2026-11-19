@@ -203,7 +203,7 @@ export const sandboxListColumns: ColumnDef<SandboxListRow>[] = [
     cell: MetadataCell,
     filterFn: 'includesStringSensitive',
     enableGlobalFilter: false,
-    size: 200,
+    size: 280,
     minSize: 160,
     enableResizing: true,
     enableSorting: false,

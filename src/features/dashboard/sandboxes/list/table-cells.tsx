@@ -10,14 +10,19 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { toast } from 'sonner'
 import { PROTECTED_URLS } from '@/configs/urls'
 import ResourceUsage from '@/features/dashboard/common/resource-usage'
 import { useTimezone } from '@/features/dashboard/timezone'
 import { formatDateParts, formatDurationCompact } from '@/lib/utils/formatting'
-import { JsonPopover } from '@/ui/json-popover'
 import { Badge } from '@/ui/primitives/badge'
 import { Button } from '@/ui/primitives/button'
 import { DotIcon, ExternalLinkIcon, PausedIcon } from '@/ui/primitives/icons'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/ui/primitives/popover'
 import { useSandboxMetricsStore } from './stores/metrics-store'
 import type { SandboxListRow } from './table-config'
 
@@ -209,30 +214,83 @@ export function TemplateCell({
   )
 }
 
-export function MetadataCell({
-  getValue,
-}: CellContext<SandboxListRow, unknown>) {
-  const value = (getValue() as string | undefined) ?? '{}'
+const metadataPriority = ['swe2_node', 'swe2_verify', 'swe2_role', 'swe2_run']
 
-  const parsedValue = useMemo(() => {
+export function MetadataCell({ row }: CellContext<SandboxListRow, unknown>) {
+  const metadata = row.original.metadata ?? {}
+  const entries = Object.entries(metadata).sort(([a], [b]) =>
+    a.localeCompare(b)
+  )
+  if (!entries.length) return <span className="text-fg-tertiary">—</span>
+
+  const preferred = metadataPriority.flatMap((key) =>
+    Object.hasOwn(metadata, key) ? [[key, metadata[key]]] : []
+  )
+  const preview = [
+    ...preferred,
+    ...entries.filter(([key]) => !metadataPriority.includes(key)),
+  ].slice(0, 2)
+  const remaining = entries.length - preview.length
+
+  async function copyMetadata() {
     try {
-      return JSON.parse(value)
+      await navigator.clipboard.writeText(JSON.stringify(metadata, null, 2))
+      toast.success('Metadata copied')
     } catch {
-      return null
+      toast.error('Could not copy metadata')
     }
-  }, [value])
-
-  if (!parsedValue || value.trim() === '{}') {
-    return <span className="text-fg-tertiary block w-full truncate">--</span>
   }
 
   return (
-    <JsonPopover
-      className="text-fg-tertiary hover:text-fg hover:underline min-w-0 normal-case"
-      json={parsedValue}
-    >
-      <span className="block w-full truncate">{value}</span>
-    </JsonPopover>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`View metadata for ${row.original.sandboxID}`}
+          className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 text-left text-xs hover:text-fg focus-visible:outline focus-visible:outline-offset-2"
+        >
+          {preview.map(([key, value]) => (
+            <span
+              key={key}
+              className="min-w-0 truncate rounded bg-bg-1 px-1.5 py-0.5"
+            >
+              <span className="text-fg-tertiary">{key}: </span>
+              {value}
+            </span>
+          ))}
+          {remaining > 0 && (
+            <span className="shrink-0 text-fg-tertiary">+{remaining}</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        aria-label="Sandbox metadata"
+        align="end"
+        className="w-96 max-w-[calc(100vw-20px)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-stroke pb-2">
+          <span className="text-sm font-medium">Metadata</span>
+          <Button
+            type="button"
+            variant="secondary"
+            size="small"
+            onClick={copyMetadata}
+          >
+            Copy JSON
+          </Button>
+        </div>
+        <dl className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-3 gap-y-2 py-2 text-xs">
+          {entries.map(([key, value]) => (
+            <div key={key} className="contents">
+              <dt className="break-all text-fg-tertiary">{key}</dt>
+              <dd className="whitespace-pre-wrap break-all font-mono">
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </PopoverContent>
+    </Popover>
   )
 }
 
