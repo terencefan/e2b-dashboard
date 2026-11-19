@@ -36,6 +36,47 @@ const gib = (value: number | null) =>
     ? '—'
     : `${(value / 2 ** 30).toLocaleString(undefined, { maximumFractionDigits: 1 })} GiB`
 
+function CapacityBar({
+  label,
+  value,
+  capacity,
+}: {
+  label: string
+  value: number | null
+  capacity: number | null
+}) {
+  if (value === null || capacity === null || capacity <= 0) return null
+  const percentage = Math.round((value / capacity) * 100)
+  const color =
+    percentage >= 95
+      ? 'bg-accent-error-highlight'
+      : percentage >= 70
+        ? 'bg-accent-warning-highlight'
+        : 'bg-accent-main-highlight'
+  return (
+    <div className="mt-4">
+      <div className="mb-1.5 flex justify-between gap-2 text-xs text-fg-tertiary">
+        <span>{label}</span>
+        <span className="tabular-nums">{percentage}%</span>
+      </div>
+      <div
+        role="meter"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.min(100, percentage)}
+        aria-valuetext={`${percentage}%`}
+        className="h-1.5 overflow-hidden rounded-full bg-bg-2"
+      >
+        <div
+          className={`h-full rounded-full ${color}`}
+          style={{ width: `${Math.min(100, percentage)}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 export default function PoolPage() {
   const { executionPool = 'pilot' } = useClientConfig()
   const [snapshot, setSnapshot] = useState<Snapshot>()
@@ -74,6 +115,13 @@ export default function PoolPage() {
   const cards = [
     {
       title: 'Sandboxes',
+      bar: (
+        <CapacityBar
+          label="Ready slots occupied"
+          value={sum(ready, (n) => n.sandboxCount + n.sandboxStartingCount)}
+          capacity={sum(ready, (n) => Math.max(0, n.maxSandboxes))}
+        />
+      ),
       rows: [
         ['Running', count(sum(nodes, (n) => n.sandboxCount))],
         ['Starting', count(sum(nodes, (n) => n.sandboxStartingCount))],
@@ -86,6 +134,13 @@ export default function PoolPage() {
     },
     {
       title: 'CPU',
+      bar: (
+        <CapacityBar
+          label="Ready CPU allocated"
+          value={sum(ready, (n) => n.metrics?.allocatedCPU ?? null)}
+          capacity={sum(ready, (n) => n.metrics?.cpuCount ?? null)}
+        />
+      ),
       rows: [
         [
           'Allocated vCPU',
@@ -99,6 +154,21 @@ export default function PoolPage() {
     },
     {
       title: 'Memory',
+      bar: (
+        <CapacityBar
+          label="Ready HugePages used"
+          value={sum(ready, (n) =>
+            n.metrics
+              ? n.metrics.hugePagesUsed * n.metrics.hugePageSizeBytes
+              : null
+          )}
+          capacity={sum(ready, (n) =>
+            n.metrics
+              ? n.metrics.hugePagesTotal * n.metrics.hugePageSizeBytes
+              : null
+          )}
+        />
+      ),
       rows: [
         [
           'Allocated',
@@ -138,6 +208,13 @@ export default function PoolPage() {
     },
     {
       title: 'Disk',
+      bar: (
+        <CapacityBar
+          label="Physical disk used"
+          value={sum(nodes, (n) => n.disk[1])}
+          capacity={sum(nodes, (n) => n.disk[2])}
+        />
+      ),
       rows: [
         ['Sandbox allocation', gib(sum(nodes, (n) => n.disk[0]))],
         ['Physical used', gib(sum(nodes, (n) => n.disk[1]))],
@@ -168,10 +245,10 @@ export default function PoolPage() {
             Observed {new Date(current.observedAt).toLocaleString()}
           </p>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {cards.map(({ title, rows }) => (
+            {cards.map(({ title, rows, bar }) => (
               <section
                 key={title}
-                className="rounded-lg border border-stroke p-4"
+                className="rounded-lg border border-stroke bg-bg-1 p-4"
               >
                 <h2 className="mb-3 font-medium">{title}</h2>
                 <dl className="space-y-2 text-sm">
@@ -184,6 +261,7 @@ export default function PoolPage() {
                     </div>
                   ))}
                 </dl>
+                {bar}
               </section>
             ))}
           </div>

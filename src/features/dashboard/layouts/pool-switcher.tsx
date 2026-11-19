@@ -22,7 +22,10 @@ export function PoolSwitcher() {
       onClick={() => {
         setSwitching(true)
         // Reloading discards requests and terminal state from the previous pool.
-        const destination = new URL('/sandboxes', location.origin)
+        const destination = new URL(
+          location.pathname === '/pool' ? '/pool' : '/sandboxes',
+          location.origin
+        )
         destination.searchParams.set('pool', nextPool)
         location.assign(destination.href)
       }}
