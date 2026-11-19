@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { PoolCurrent, PoolFleet } from '@/features/dashboard/pool/current'
 import { PoolTrends } from '@/features/dashboard/pool/trends'
 import { useClientConfig } from '@/features/client-config-provider'
 
@@ -226,6 +227,28 @@ export default function PoolPage() {
 
   return (
     <main className="h-full min-h-0 w-full overflow-y-auto p-3 md:p-6">
+      <PoolCurrent
+        key={executionPool}
+        pool={executionPool}
+        diskCapacity={current ? sum(nodes, (node) => node.disk[2]) : null}
+      />
+      {current && (
+        <PoolFleet
+          statuses={nodes.map((node) => node.status)}
+          running={ready.reduce((total, node) => total + node.sandboxCount, 0)}
+          starting={ready.reduce(
+            (total, node) => total + node.sandboxStartingCount,
+            0
+          )}
+          slots={ready.reduce(
+            (total, node) => total + Math.max(0, node.maxSandboxes),
+            0
+          )}
+          outside={nodes
+            .filter((node) => node.status !== 'ready')
+            .reduce((total, node) => total + node.sandboxCount, 0)}
+        />
+      )}
       <PoolTrends key={executionPool} pool={executionPool} />
       {failedPool === executionPool && (
         <p role="status" className="mt-2 text-sm text-fg-tertiary">
