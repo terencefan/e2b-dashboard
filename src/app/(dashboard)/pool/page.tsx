@@ -1,7 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PoolCurrent, PoolFleet } from '@/features/dashboard/pool/current'
+import {
+  type HugePages,
+  PoolCurrent,
+  PoolFleet,
+} from '@/features/dashboard/pool/current'
 import { PoolTrends } from '@/features/dashboard/pool/trends'
 import { useClientConfig } from '@/features/client-config-provider'
 
@@ -30,6 +34,30 @@ function sum(nodes: PoolNode[], value: (node: PoolNode) => number | null) {
     const next = value(node)
     return total === null || next === null ? null : total + next
   }, 0)
+}
+
+function readyHugePages(nodes: PoolNode[]): HugePages | null {
+  const ready = nodes.filter((node) => node.status === 'ready')
+  const total = sum(ready, (node) =>
+    node.metrics &&
+    node.metrics.hugePagesTotal > 0 &&
+    node.metrics.hugePageSizeBytes > 0
+      ? node.metrics.hugePagesTotal * node.metrics.hugePageSizeBytes
+      : null
+  )
+  const used = sum(ready, (node) =>
+    node.metrics
+      ? node.metrics.hugePagesUsed * node.metrics.hugePageSizeBytes
+      : null
+  )
+  const reserved = sum(ready, (node) =>
+    node.metrics
+      ? node.metrics.hugePagesReserved * node.metrics.hugePageSizeBytes
+      : null
+  )
+  return !total || used === null || reserved === null || used + reserved > total
+    ? null
+    : { total, used, reserved }
 }
 
 const count = (value: number | null) => value?.toLocaleString() ?? '—'
@@ -81,6 +109,10 @@ function CapacityBar({
 
 export default function PoolPage() {
   const { executionPool = 'pilot' } = useClientConfig()
+  const [history, setHistory] = useState<{
+    pool: string
+    samples: [number, string][]
+  }>()
   const [snapshot, setSnapshot] = useState<Snapshot>()
   const [failedPool, setFailedPool] = useState<string>()
   const current = snapshot?.pool === executionPool ? snapshot : undefined
@@ -99,6 +131,27 @@ export default function PoolPage() {
         const data: Snapshot = await response.json()
         if (!controller.signal.aborted && data.pool === executionPool) {
           setSnapshot(data)
+          const huge = readyHugePages(data.nodes)
+          const time = Date.parse(data.observedAt) / 1000
+          if (Number.isFinite(time)) {
+            const sample: [number, string] = [
+              time,
+              huge
+                ? String(((huge.used + huge.reserved) / huge.total) * 100)
+                : 'NaN',
+            ]
+            setHistory((prev) => {
+              const samples = prev?.pool === data.pool ? prev.samples : []
+              if ((samples.at(-1)?.[0] ?? 0) >= time) return prev
+              return {
+                pool: data.pool,
+                samples: [
+                  ...samples.filter(([at]) => at > time - 3600),
+                  sample,
+                ],
+              }
+            })
+          }
           setFailedPool(undefined)
         }
       } catch {
@@ -230,6 +283,8 @@ export default function PoolPage() {
       <PoolCurrent
         key={executionPool}
         pool={executionPool}
+        hugePages={current ? readyHugePages(nodes) : null}
+        hugePagesObservedAt={current?.observedAt}
         diskCapacity={current ? sum(nodes, (node) => node.disk[2]) : null}
       />
       {current && (
@@ -249,7 +304,13 @@ export default function PoolPage() {
             .reduce((total, node) => total + node.sandboxCount, 0)}
         />
       )}
-      <PoolTrends key={executionPool} pool={executionPool} />
+      <PoolTrends
+        key={executionPool}
+        pool={executionPool}
+        hugePagesSamples={
+          history?.pool === executionPool ? history.samples : []
+        }
+      />
       {failedPool === executionPool && (
         <p role="status" className="mt-2 text-sm text-fg-tertiary">
           Pool metrics are temporarily unavailable

@@ -16,13 +16,19 @@ const themeVars = [
 ] as const
 const metrics = [
   ['pool_cpu_utilization', 'CPU utilization'],
-  ['pool_memory_utilization', 'Memory utilization'],
+  ['hugepages', 'Ready node HugePages committed'],
   ['pool_disk_utilization', 'Data disk utilization'],
 ] as const
 
 type Snapshot = { pool: string; series: Record<string, [number, string][]> }
 
-export function PoolTrends({ pool }: { pool: string }) {
+export function PoolTrends({
+  pool,
+  hugePagesSamples,
+}: {
+  pool: string
+  hugePagesSamples: [number, string][]
+}) {
   const [snapshot, setSnapshot] = useState<Snapshot>()
   const [failed, setFailed] = useState(false)
   const colors = useCssVars(themeVars)
@@ -73,12 +79,18 @@ export function PoolTrends({ pool }: { pool: string }) {
       )}
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
         {metrics.map(([metric, title]) => {
-          const samples = snapshot?.series[metric] ?? []
+          const samples =
+            metric === 'hugepages'
+              ? hugePagesSamples
+              : (snapshot?.series[metric] ?? [])
           const points: [number, number | null][] = []
           for (const [time, raw] of samples) {
             const timestamp = time * 1000
             const prior = points.at(-1)?.[0]
-            if (prior !== undefined && timestamp - prior > 30_000) {
+            if (
+              prior !== undefined &&
+              timestamp - prior > (metric === 'hugepages' ? 90_000 : 30_000)
+            ) {
               points.push([prior + 30_000, null])
             }
             const number = Number(raw)
@@ -98,6 +110,11 @@ export function PoolTrends({ pool }: { pool: string }) {
                   · {typeof latest === 'number' ? `${latest.toFixed(1)}%` : '—'}
                 </span>
               </h3>
+              {metric === 'hugepages' && (
+                <p className="text-xs text-fg-tertiary">
+                  Samples since opening this page
+                </p>
+              )}
               {points.length ? (
                 <ReactEChartsCore
                   echarts={echarts}
@@ -136,7 +153,7 @@ export function PoolTrends({ pool }: { pool: string }) {
                       {
                         type: 'line',
                         name: title,
-                        showSymbol: false,
+                        showSymbol: points.length === 1,
                         data: points,
                         lineStyle: {
                           color: colors['--accent-main-highlight'] || '#ff6a00',

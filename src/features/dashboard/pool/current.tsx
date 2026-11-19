@@ -10,7 +10,7 @@ import { useCssVars } from '@/lib/hooks/use-css-vars'
 echarts.use([PieChart, SVGRenderer])
 const metrics = [
   ['pool_cpu_utilization', 'CPU used'],
-  ['pool_memory_utilization', 'Memory used'],
+  ['hugepages', 'Ready node HugePages committed'],
   ['pool_disk_utilization', 'Data disk used'],
 ] as const
 const theme = ['--accent-main-highlight', '--stroke'] as const
@@ -19,6 +19,7 @@ type Current = {
   observedAt: string
   values: Record<string, number | undefined>
 }
+export type HugePages = { total: number; used: number; reserved: number }
 type Segment = { name: string; value: number; color: string }
 
 function Ring({ segments, label }: { segments: Segment[]; label: string }) {
@@ -55,9 +56,13 @@ function Ring({ segments, label }: { segments: Segment[]; label: string }) {
 export function PoolCurrent({
   pool,
   diskCapacity,
+  hugePages,
+  hugePagesObservedAt,
 }: {
   pool: string
   diskCapacity: number | null
+  hugePages: HugePages | null
+  hugePagesObservedAt?: string
 }) {
   const [data, setData] = useState<Current>()
   const [failed, setFailed] = useState(false)
@@ -105,6 +110,73 @@ export function PoolCurrent({
       )}
       <div className="grid gap-3 sm:grid-cols-3">
         {metrics.map(([key, label]) => {
+          if (key === 'hugepages') {
+            const committed = hugePages
+              ? ((hugePages.used + hugePages.reserved) / hugePages.total) * 100
+              : null
+            const parts = hugePages
+              ? [
+                  {
+                    name: 'Used',
+                    value: hugePages.used,
+                    color: colors['--accent-main-highlight'] || '#ed6900',
+                  },
+                  {
+                    name: 'Reserved',
+                    value: hugePages.reserved,
+                    color: '#d3942b',
+                  },
+                  {
+                    name: 'Available',
+                    value:
+                      hugePages.total - hugePages.used - hugePages.reserved,
+                    color: colors['--stroke'] || '#666',
+                  },
+                ]
+              : [
+                  {
+                    name: 'Unavailable',
+                    value: 1,
+                    color: colors['--stroke'] || '#666',
+                  },
+                ]
+            return (
+              <section
+                key={key}
+                aria-label={label}
+                className="rounded-lg border border-stroke bg-bg-1 p-3"
+              >
+                <h3 className="text-sm font-medium">{label}</h3>
+                <Ring
+                  label={
+                    committed === null
+                      ? '—'
+                      : `${committed.toFixed(1)}%`
+                  }
+                  segments={parts}
+                />
+                {hugePages && (
+                  <ul className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-fg-tertiary">
+                    {parts.map((part) => (
+                      <li key={part.name}>
+                        <span
+                          className="mr-1 inline-block size-2 rounded-sm"
+                          style={{ backgroundColor: part.color }}
+                        />
+                        {part.name} {(part.value / 2 ** 30).toFixed(1)} GiB
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {hugePagesObservedAt && (
+                  <p className="mt-2 text-center text-xs text-fg-tertiary">
+                    Observed{' '}
+                    {new Date(hugePagesObservedAt).toLocaleTimeString()}
+                  </p>
+                )}
+              </section>
+            )
+          }
           const used = data?.values[key]
           return (
             <section
@@ -167,7 +239,7 @@ export function PoolFleet({
     .map(([name, value], i) => ({
       name,
       value,
-      color: statusColors[i % statusColors.length] ?? "#89919d",
+      color: statusColors[i % statusColors.length] ?? '#89919d',
     }))
   if (!segments.length)
     segments.push({ name: 'No nodes', value: 1, color: '#89919d' })
