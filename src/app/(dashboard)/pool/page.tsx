@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { PoolTrends } from '@/features/dashboard/pool/trends'
 import { PoolUsage } from '@/features/dashboard/pool/usage'
 import { Button } from '@/ui/primitives/button'
 import { useClientConfig } from '@/features/client-config-provider'
@@ -257,6 +258,7 @@ export default function PoolPage() {
         <PoolUsage key={executionPool} pool={executionPool} />
       ) : (
         <>
+          <PoolTrends key={executionPool} pool={executionPool} />
           {failedPool === executionPool && (
             <p role="status" className="mt-2 text-sm text-fg-tertiary">
               Pool metrics are temporarily unavailable
@@ -265,7 +267,7 @@ export default function PoolPage() {
           )}
           {!current && failedPool !== executionPool && (
             <p role="status" className="mt-2">
-              Loading pool metrics…
+              Loading node snapshot…
             </p>
           )}
           {current && (
