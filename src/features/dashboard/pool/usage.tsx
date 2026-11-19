@@ -12,6 +12,7 @@ type SandboxUsage = {
   sandboxID: string
   templateID: string
   alias?: string
+  creator?: { id: string; name?: string }
 } & Record<Metric, number | null>
 type Usage = {
   pool: string
@@ -22,6 +23,7 @@ type Usage = {
 
 export function PoolUsage({ pool }: { pool: string }) {
   const [template, setTemplate] = useState('')
+  const [creator, setCreator] = useState('')
   const [active, setActive] = useState<string>()
   const [usage, setUsage] = useState<Usage>()
   const [failed, setFailed] = useState(false)
@@ -60,9 +62,17 @@ export function PoolUsage({ pool }: { pool: string }) {
   const templates = new Map(
     sandboxes.map((row) => [row.templateID, row.alias || row.templateID])
   )
-  const visible = template
-    ? sandboxes.filter((row) => row.templateID === template)
-    : sandboxes
+  const creators = new Map(
+    sandboxes.map((row) => [
+      row.creator?.id ?? 'unknown',
+      row.creator?.name || row.creator?.id || 'Unknown creator',
+    ])
+  )
+  const visible = sandboxes.filter(
+    (row) =>
+      (!template || row.templateID === template) &&
+      (!creator || (row.creator?.id ?? 'unknown') === creator)
+  )
   const selected = visible.find((row) => row.sandboxID === active)
   const value = (percent: number | null) =>
     percent === null ? 'No sample' : `${percent.toFixed(1)}%`
@@ -84,6 +94,23 @@ export function PoolUsage({ pool }: { pool: string }) {
               .map(([id, label]) => (
                 <option key={id} value={id}>
                   {label}
+                </option>
+              ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          Creator
+          <select
+            className="max-w-56 rounded border border-stroke bg-bg-1 p-1.5"
+            value={creator}
+            onChange={(event) => setCreator(event.target.value)}
+          >
+            <option value="">All creators</option>
+            {[...creators]
+              .sort((a, b) => a[1].localeCompare(b[1]))
+              .map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
                 </option>
               ))}
           </select>
@@ -172,6 +199,10 @@ export function PoolUsage({ pool }: { pool: string }) {
               <p className="mt-3 break-all text-xs text-fg-tertiary">
                 {selected.sandboxID} ·{' '}
                 {selected.alias || selected.templateID || 'Unknown template'} ·{' '}
+                {selected.creator?.name ||
+                  selected.creator?.id ||
+                  'Unknown creator'}{' '}
+                ·{' '}
                 {metrics
                   .map(
                     ([metric, title]) => `${title} ${value(selected[metric])}`

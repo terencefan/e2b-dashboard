@@ -226,9 +226,6 @@ export default function PoolPage() {
 
   return (
     <main className="h-full min-h-0 w-full overflow-y-auto p-3 md:p-6">
-      <h1 className="text-xl font-semibold">
-        {executionPool === 'production' ? 'Production' : 'Pilot'} Pool
-      </h1>
       <PoolTrends key={executionPool} pool={executionPool} />
       {failedPool === executionPool && (
         <p role="status" className="mt-2 text-sm text-fg-tertiary">
