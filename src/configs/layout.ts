@@ -23,6 +23,8 @@ const DASHBOARD_LAYOUT_CONFIGS: Record<
   string,
   (pathname: string) => DashboardLayoutConfig
 > = {
+  '/pool': () => ({ title: 'Pool Overview', type: 'custom' }),
+  '/pool/heatmap': () => ({ title: 'Sandbox Heatmap', type: 'custom' }),
   '/api-keys': () => ({ title: 'API Keys', type: 'custom' }),
   // sandboxes
   '/sandboxes': () => ({

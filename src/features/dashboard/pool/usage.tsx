@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Button } from '@/ui/primitives/button'
 
 const metrics = [
   ['cpu', 'CPU'],
@@ -22,7 +21,6 @@ type Usage = {
 }
 
 export function PoolUsage({ pool }: { pool: string }) {
-  const [metric, setMetric] = useState<Metric>('cpu')
   const [template, setTemplate] = useState('')
   const [active, setActive] = useState<string>()
   const [usage, setUsage] = useState<Usage>()
@@ -53,7 +51,12 @@ export function PoolUsage({ pool }: { pool: string }) {
     }
   }, [pool])
 
-  const sandboxes = usage?.pool === pool ? usage.sandboxes : []
+  const sandboxes =
+    usage?.pool === pool
+      ? [...usage.sandboxes].sort((a, b) =>
+          a.sandboxID.localeCompare(b.sandboxID)
+        )
+      : []
   const templates = new Map(
     sandboxes.map((row) => [row.templateID, row.alias || row.templateID])
   )
@@ -67,19 +70,6 @@ export function PoolUsage({ pool }: { pool: string }) {
   return (
     <section aria-label="Sandbox usage heatmap" className="mt-4 space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div role="group" aria-label="Resource" className="flex gap-1">
-          {metrics.map(([key, label]) => (
-            <Button
-              key={key}
-              aria-pressed={metric === key}
-              variant={metric === key ? 'secondary' : 'quaternary'}
-              size="small"
-              onClick={() => setMetric(key)}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
         <label className="flex items-center gap-2 text-sm">
           Template
           <select
@@ -113,11 +103,7 @@ export function PoolUsage({ pool }: { pool: string }) {
       {usage && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-fg-tertiary">
-            <span>
-              {visible.length} running sandboxes ·{' '}
-              {visible.filter((row) => row[metric] === null).length} without
-              samples
-            </span>
+            <span>{visible.length} running sandboxes</span>
             <span>Observed {new Date(usage.observedAt).toLocaleString()}</span>
           </div>
           {usage.partial && (
@@ -146,36 +132,51 @@ export function PoolUsage({ pool }: { pool: string }) {
             {visible.length === 0 && (
               <p className="text-sm">No running sandboxes match this filter.</p>
             )}
-            <div className="grid grid-cols-[repeat(auto-fill,14px)] gap-1">
-              {visible.map((row) => {
-                const percent = row[metric]
-                const label = `${row.sandboxID} · ${row.alias || row.templateID || 'Unknown template'} · ${value(percent)}`
-                return (
-                  <button
-                    type="button"
-                    key={row.sandboxID}
-                    aria-label={label}
-                    title={label}
-                    className="size-3.5 rounded-sm bg-fg-tertiary hover:outline focus-visible:outline"
-                    onFocus={() => setActive(row.sandboxID)}
-                    onPointerEnter={() => setActive(row.sandboxID)}
-                    onClick={() => setActive(row.sandboxID)}
-                    style={
-                      percent === null
-                        ? undefined
-                        : {
-                            backgroundColor: `hsl(${130 * (1 - Math.min(100, percent) / 100)} 62% 42%)`,
+            <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-3">
+              {metrics.map(([metric, title]) => (
+                <section
+                  key={metric}
+                  aria-label={title}
+                  className="min-w-0 rounded-lg border border-stroke p-3"
+                >
+                  <h2 className="mb-3 text-sm font-medium">{title}</h2>
+                  <div className="grid grid-cols-[repeat(auto-fill,14px)] gap-1">
+                    {visible.map((row) => {
+                      const percent = row[metric]
+                      const label = `${row.sandboxID} · ${row.alias || row.templateID || 'Unknown template'} · ${value(percent)}`
+                      return (
+                        <button
+                          type="button"
+                          key={row.sandboxID}
+                          aria-label={label}
+                          title={label}
+                          className={`size-3.5 rounded-sm bg-fg-tertiary hover:outline focus-visible:outline ${active === row.sandboxID ? 'outline outline-2 outline-offset-1 outline-accent-main-highlight' : ''}`}
+                          onFocus={() => setActive(row.sandboxID)}
+                          onPointerEnter={() => setActive(row.sandboxID)}
+                          onClick={() => setActive(row.sandboxID)}
+                          style={
+                            percent === null
+                              ? undefined
+                              : {
+                                  backgroundColor: `hsl(${130 * (1 - Math.min(100, percent) / 100)} 62% 42%)`,
+                                }
                           }
-                    }
-                  />
-                )
-              })}
+                        />
+                      )
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
             {selected && (
               <p className="mt-3 break-all text-xs text-fg-tertiary">
                 {selected.sandboxID} ·{' '}
                 {selected.alias || selected.templateID || 'Unknown template'} ·{' '}
-                {value(selected[metric])}
+                {metrics
+                  .map(
+                    ([metric, title]) => `${title} ${value(selected[metric])}`
+                  )
+                  .join(' · ')}
               </p>
             )}
           </div>

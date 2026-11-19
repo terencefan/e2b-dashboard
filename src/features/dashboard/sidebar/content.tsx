@@ -60,10 +60,18 @@ export default function DashboardSidebarContent() {
           ? [
               ...SIDEBAR_MAIN_LINKS,
               {
-                label: 'Pool',
+                label: 'Overview',
+                group: 'Pool',
                 href: `/pool?pool=${executionPool}`,
                 icon: SandboxIcon,
                 activeMatch: '/pool',
+              },
+              {
+                label: 'Sandbox Heatmap',
+                group: 'Pool',
+                href: `/pool/heatmap?pool=${executionPool}`,
+                icon: SandboxIcon,
+                activeMatch: '/pool/heatmap',
               },
             ]
           : SIDEBAR_MAIN_LINKS

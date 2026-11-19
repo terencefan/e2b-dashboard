@@ -15,15 +15,9 @@ const themeVars = [
   '--accent-main-highlight',
 ] as const
 const metrics = [
-  ['orchestrator_env_sandbox_running', 'Running sandboxes', 'sandboxes', 1],
-  ['orchestrator_sandbox_cpu_allocated', 'Allocated CPU', 'vCPU', 1],
-  ['orchestrator_sandbox_memory_allocated', 'Allocated memory', 'GiB', 2 ** 30],
-  [
-    'orchestrator_sandbox_disk_allocated',
-    'Logical disk allocation',
-    'GiB',
-    2 ** 30,
-  ],
+  ['pool_cpu_utilization', 'CPU utilization'],
+  ['pool_memory_utilization', 'Memory utilization'],
+  ['pool_disk_utilization', 'Data disk utilization'],
 ] as const
 
 type Snapshot = { pool: string; series: Record<string, [number, string][]> }
@@ -77,15 +71,21 @@ export function PoolTrends({ pool }: { pool: string }) {
           {snapshot ? '. Showing the last snapshot.' : '.'}
         </p>
       )}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {metrics.map(([metric, title, unit, divisor]) => {
-          const points = snapshot?.series[metric]?.map(([time, raw]) => {
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+        {metrics.map(([metric, title]) => {
+          const samples = snapshot?.series[metric] ?? []
+          const points: [number, number | null][] = []
+          for (const [time, raw] of samples) {
+            const timestamp = time * 1000
+            const prior = points.at(-1)?.[0]
+            if (prior !== undefined && timestamp - prior > 30_000) {
+              points.push([prior + 30_000, null])
+            }
             const number = Number(raw)
-            return [
-              time * 1000,
-              Number.isFinite(number) ? number / divisor : null,
-            ]
-          })
+            points.push([timestamp, Number.isFinite(number) ? number : null])
+          }
+          const last = points.at(-1)
+          const latest = last && Date.now() - last[0] <= 90_000 ? last[1] : null
           return (
             <section
               key={metric}
@@ -94,9 +94,11 @@ export function PoolTrends({ pool }: { pool: string }) {
             >
               <h3 className="text-sm font-medium">
                 {title}{' '}
-                <span className="font-normal text-fg-tertiary">· {unit}</span>
+                <span className="font-normal text-fg-tertiary">
+                  · {typeof latest === 'number' ? `${latest.toFixed(1)}%` : '—'}
+                </span>
               </h3>
-              {points?.length ? (
+              {points.length ? (
                 <ReactEChartsCore
                   echarts={echarts}
                   opts={{ renderer: 'svg' }}
@@ -109,7 +111,7 @@ export function PoolTrends({ pool }: { pool: string }) {
                       confine: true,
                       valueFormatter: (v: unknown) =>
                         typeof v === 'number'
-                          ? `${v.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${unit}`
+                          ? `${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`
                           : '—',
                     },
                     xAxis: {
@@ -123,7 +125,11 @@ export function PoolTrends({ pool }: { pool: string }) {
                     yAxis: {
                       type: 'value',
                       min: 0,
-                      axisLabel: { color: colors['--fg-tertiary'] },
+                      max: 100,
+                      axisLabel: {
+                        color: colors['--fg-tertiary'],
+                        formatter: '{value}%',
+                      },
                       splitLine: { lineStyle: { color: colors['--stroke'] } },
                     },
                     series: [

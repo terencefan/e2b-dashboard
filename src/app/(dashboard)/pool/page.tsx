@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { PoolTrends } from '@/features/dashboard/pool/trends'
-import { PoolUsage } from '@/features/dashboard/pool/usage'
-import { Button } from '@/ui/primitives/button'
 import { useClientConfig } from '@/features/client-config-provider'
 
 type PoolNode = {
@@ -82,7 +80,6 @@ function CapacityBar({
 
 export default function PoolPage() {
   const { executionPool = 'pilot' } = useClientConfig()
-  const [tab, setTab] = useState<'overview' | 'usage'>('overview')
   const [snapshot, setSnapshot] = useState<Snapshot>()
   const [failedPool, setFailedPool] = useState<string>()
   const current = snapshot?.pool === executionPool ? snapshot : undefined
@@ -228,122 +225,92 @@ export default function PoolPage() {
   ]
 
   return (
-    <main className="h-full overflow-y-auto p-4 md:p-6">
+    <main className="h-full min-h-0 w-full overflow-y-auto p-3 md:p-6">
       <h1 className="text-xl font-semibold">
         {executionPool === 'production' ? 'Production' : 'Pilot'} Pool
       </h1>
-      <div
-        role="group"
-        aria-label="Pool views"
-        className="mt-3 flex gap-1 border-b border-stroke pb-2"
-      >
-        <Button
-          size="small"
-          variant={tab === 'overview' ? 'secondary' : 'quaternary'}
-          aria-pressed={tab === 'overview'}
-          onClick={() => setTab('overview')}
-        >
-          Overview
-        </Button>
-        <Button
-          size="small"
-          variant={tab === 'usage' ? 'secondary' : 'quaternary'}
-          aria-pressed={tab === 'usage'}
-          onClick={() => setTab('usage')}
-        >
-          Usage
-        </Button>
-      </div>
-      {tab === 'usage' ? (
-        <PoolUsage key={executionPool} pool={executionPool} />
-      ) : (
+      <PoolTrends key={executionPool} pool={executionPool} />
+      {failedPool === executionPool && (
+        <p role="status" className="mt-2 text-sm text-fg-tertiary">
+          Pool metrics are temporarily unavailable
+          {current ? '. Showing the last snapshot.' : '.'}
+        </p>
+      )}
+      {!current && failedPool !== executionPool && (
+        <p role="status" className="mt-2">
+          Loading node snapshot…
+        </p>
+      )}
+      {current && (
         <>
-          <PoolTrends key={executionPool} pool={executionPool} />
-          {failedPool === executionPool && (
-            <p role="status" className="mt-2 text-sm text-fg-tertiary">
-              Pool metrics are temporarily unavailable
-              {current ? '. Showing the last snapshot.' : '.'}
-            </p>
-          )}
-          {!current && failedPool !== executionPool && (
-            <p role="status" className="mt-2">
-              Loading node snapshot…
-            </p>
-          )}
-          {current && (
-            <>
-              <p className="mt-1 text-sm text-fg-tertiary">
-                Observed {new Date(current.observedAt).toLocaleString()}
-              </p>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {cards.map(({ title, rows, bar }) => (
-                  <section
-                    key={title}
-                    className="rounded-lg border border-stroke bg-bg-1 p-4"
-                  >
-                    <h2 className="mb-3 font-medium">{title}</h2>
-                    <dl className="space-y-2 text-sm">
-                      {rows.map(([label, value]) => (
-                        <div key={label} className="flex justify-between gap-2">
-                          <dt className="text-fg-tertiary">{label}</dt>
-                          <dd className="whitespace-nowrap tabular-nums">
-                            {value}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                    {bar}
-                  </section>
-                ))}
-              </div>
-              <h2 className="mt-6 font-medium">Nodes</h2>
-              <div className="mt-2 overflow-x-auto rounded-lg border border-stroke">
-                <table className="w-full whitespace-nowrap text-left text-sm">
-                  <thead>
-                    <tr>
-                      {[
-                        'Node',
-                        'Status',
-                        'Running',
-                        'Starting',
-                        'Allocated vCPU',
-                        'Allocated memory',
-                        'Physical disk used / capacity',
-                      ].map((label) => (
-                        <th key={label} scope="col" className="p-3 font-medium">
-                          {label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {nodes.map((node) => (
-                      <tr key={node.id} className="border-t border-stroke">
-                        {[
-                          node.id,
-                          node.status,
-                          count(node.sandboxCount),
-                          count(node.sandboxStartingCount),
-                          count(node.metrics?.allocatedCPU ?? null),
-                          gib(node.metrics?.allocatedMemoryBytes ?? null),
-                          `${gib(node.disk[1])} / ${gib(node.disk[2])}`,
-                        ].map((value, index) => (
-                          <td key={index} className="p-3 tabular-nums">
-                            {value}
-                          </td>
-                        ))}
-                      </tr>
+          <p className="mt-1 text-sm text-fg-tertiary">
+            Observed {new Date(current.observedAt).toLocaleString()}
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {cards.map(({ title, rows, bar }) => (
+              <section
+                key={title}
+                className="rounded-lg border border-stroke bg-bg-1 p-4"
+              >
+                <h2 className="mb-3 font-medium">{title}</h2>
+                <dl className="space-y-2 text-sm">
+                  {rows.map(([label, value]) => (
+                    <div key={label} className="flex justify-between gap-2">
+                      <dt className="text-fg-tertiary">{label}</dt>
+                      <dd className="whitespace-nowrap tabular-nums">
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {bar}
+              </section>
+            ))}
+          </div>
+          <h2 className="mt-6 font-medium">Nodes</h2>
+          <div className="mt-2 overflow-x-auto rounded-lg border border-stroke">
+            <table className="w-full whitespace-nowrap text-left text-sm">
+              <thead>
+                <tr>
+                  {[
+                    'Node',
+                    'Status',
+                    'Running',
+                    'Starting',
+                    'Allocated vCPU',
+                    'Allocated memory',
+                    'Physical disk used / capacity',
+                  ].map((label) => (
+                    <th key={label} scope="col" className="p-3 font-medium">
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {nodes.map((node) => (
+                  <tr key={node.id} className="border-t border-stroke">
+                    {[
+                      node.id,
+                      node.status,
+                      count(node.sandboxCount),
+                      count(node.sandboxStartingCount),
+                      count(node.metrics?.allocatedCPU ?? null),
+                      gib(node.metrics?.allocatedMemoryBytes ?? null),
+                      `${gib(node.disk[1])} / ${gib(node.disk[2])}`,
+                    ].map((value, index) => (
+                      <td key={index} className="p-3 tabular-nums">
+                        {value}
+                      </td>
                     ))}
-                  </tbody>
-                </table>
-                {nodes.length === 0 && (
-                  <p className="p-3 text-sm text-fg-tertiary">
-                    No nodes reported.
-                  </p>
-                )}
-              </div>
-            </>
-          )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {nodes.length === 0 && (
+              <p className="p-3 text-sm text-fg-tertiary">No nodes reported.</p>
+            )}
+          </div>
         </>
       )}
     </main>
