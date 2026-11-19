@@ -2,11 +2,18 @@
 
 import type { CellContext } from '@tanstack/react-table'
 import Link from 'next/link'
-import { useMemo } from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { PROTECTED_URLS } from '@/configs/urls'
 import ResourceUsage from '@/features/dashboard/common/resource-usage'
 import { useTimezone } from '@/features/dashboard/timezone'
-import { formatDateParts } from '@/lib/utils/formatting'
+import { formatDateParts, formatDurationCompact } from '@/lib/utils/formatting'
 import { JsonPopover } from '@/ui/json-popover'
 import { Badge } from '@/ui/primitives/badge'
 import { Button } from '@/ui/primitives/button'
@@ -249,5 +256,38 @@ export function StartedAtCell({
         {formattedTimestamp?.timezonePart ?? ''}
       </span>
     </div>
+  )
+}
+
+const SandboxClockContext = createContext<number | null>(null)
+
+export function SandboxClock({ children }: { children: ReactNode }) {
+  const [now, setNow] = useState<number | null>(null)
+  useEffect(() => {
+    const tick = () => setNow(Date.now())
+    tick()
+    const timer = window.setInterval(tick, 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+  return <SandboxClockContext value={now}>{children}</SandboxClockContext>
+}
+
+export function SandboxUptimeCell({
+  row,
+}: CellContext<SandboxListRow, unknown>) {
+  const now = useContext(SandboxClockContext)
+  const startedAt = Date.parse(row.original.startedAt)
+  if (
+    row.original.state !== 'running' ||
+    now === null ||
+    !Number.isFinite(startedAt)
+  ) {
+    return <span className="text-fg-tertiary">—</span>
+  }
+
+  return (
+    <span className={TIMESTAMP_TEXT_CLASSNAME}>
+      {formatDurationCompact(Math.max(0, now - startedAt))}
+    </span>
   )
 }

@@ -7,6 +7,7 @@ import { AddIcon, CloseIcon } from '@/ui/primitives/icons'
 import SandboxesListEmpty from './empty'
 import { useSandboxesMetrics } from './hooks/use-sandboxes-metrics'
 import { useSandboxListTableStore } from './stores/table-store'
+import { SandboxClock } from './table-cells'
 import type { SandboxListRow, SandboxListTable } from './table-config'
 import { SandboxesTableRow } from './table-row'
 
@@ -133,12 +134,16 @@ export const SandboxesTableBody = ({
 
   return (
     <>
-      <DataTableBody virtualizedTotalHeight={virtualizedTotalHeight}>
-        {virtualPaddingTop > 0 && <div style={{ height: virtualPaddingTop }} />}
-        {rows.map((row) => (
-          <SandboxesTableRow key={row.id} row={row} />
-        ))}
-      </DataTableBody>
+      <SandboxClock>
+        <DataTableBody virtualizedTotalHeight={virtualizedTotalHeight}>
+          {virtualPaddingTop > 0 && (
+            <div style={{ height: virtualPaddingTop }} />
+          )}
+          {rows.map((row) => (
+            <SandboxesTableRow key={row.id} row={row} />
+          ))}
+        </DataTableBody>
+      </SandboxClock>
 
       {hasNextPage && (
         <div className="flex items-center justify-center py-3 text-fg-tertiary max-md:sticky max-md:left-0 max-md:w-[calc(100svw-1.5rem)]">
