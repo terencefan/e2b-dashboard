@@ -2,7 +2,9 @@
 
 import micromatch from 'micromatch'
 import { usePathname } from 'next/navigation'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useClientConfig } from '@/features/client-config-provider'
+import { SandboxIcon } from '@/ui/primitives/icons'
 import { SIDEBAR_MAIN_LINKS, type SidebarNavItem } from '@/configs/sidebar'
 
 import { useIsMobile } from '@/lib/hooks/use-mobile'
@@ -38,11 +40,35 @@ export default function DashboardSidebarContent() {
   const pathname = usePathname()
   const isMobile = useIsMobile()
   const { setOpenMobile } = useSidebar()
-  const visibleLinks = SIDEBAR_MAIN_LINKS
+  const { executionPool = 'pilot' } = useClientConfig()
+  const [poolAccess, setPoolAccess] = useState(false)
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/access/pool-capability', {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then((response) => setPoolAccess(response.status === 204))
+      .catch(() => {})
+    return () => controller.abort()
+  }, [])
 
   const groupedNavLinks = useMemo(
-    () => createGroupedLinks(visibleLinks),
-    [visibleLinks]
+    () =>
+      createGroupedLinks(
+        poolAccess
+          ? [
+              ...SIDEBAR_MAIN_LINKS,
+              {
+                label: 'Pool',
+                href: `/pool?pool=${executionPool}`,
+                icon: SandboxIcon,
+                activeMatch: '/pool',
+              },
+            ]
+          : SIDEBAR_MAIN_LINKS
+      ),
+    [executionPool, poolAccess]
   )
 
   const isActive = (link: SidebarNavItem) => {

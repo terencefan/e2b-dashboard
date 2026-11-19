@@ -30,6 +30,7 @@ export const PROTECTED_URLS = {
  */
 export const PROTECTED_ROUTE_PREFIXES: readonly string[] = [
   '/api-keys',
+  '/pool',
   '/sandboxes',
   '/templates',
 ]
