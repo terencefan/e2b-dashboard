@@ -11,7 +11,7 @@ echarts.use([PieChart, SVGRenderer])
 const metrics = [
   ['pool_cpu_utilization', 'CPU used'],
   ['hugepages', 'Ready node HugePages committed'],
-  ['pool_disk_utilization', 'Data disk used'],
+  ['pool_disk_utilization', 'E2B data disk'],
 ] as const
 const theme = ['--accent-main-highlight', '--stroke'] as const
 type Current = {
@@ -55,12 +55,12 @@ function Ring({ segments, label }: { segments: Segment[]; label: string }) {
 
 export function PoolCurrent({
   pool,
-  diskCapacity,
+  dataDisk,
   hugePages,
   hugePagesObservedAt,
 }: {
   pool: string
-  diskCapacity: number | null
+  dataDisk: { used: number; total: number } | null
   hugePages: HugePages | null
   hugePagesObservedAt?: string
 }) {
@@ -177,7 +177,12 @@ export function PoolCurrent({
               </section>
             )
           }
-          const used = data?.values[key]
+          const disk = key === 'pool_disk_utilization' ? dataDisk : null
+          const used = disk
+            ? (disk.used / disk.total) * 100
+            : data?.values[key]
+          const diskUnit = disk && disk.total >= 2 ** 40 ? 'TiB' : 'GiB'
+          const diskUnitBytes = diskUnit === 'TiB' ? 2 ** 40 : 2 ** 30
           return (
             <section
               key={key}
@@ -200,14 +205,13 @@ export function PoolCurrent({
                   },
                 ]}
               />
-              {key === 'pool_disk_utilization' &&
-                diskCapacity !== null &&
-                used !== undefined && (
-                  <p className="text-center text-xs text-fg-tertiary">
-                    {((diskCapacity * used) / (100 * 2 ** 30)).toFixed(1)} /{' '}
-                    {(diskCapacity / 2 ** 30).toFixed(1)} GiB
-                  </p>
-                )}
+              {key === 'pool_disk_utilization' && (
+                <p className="text-center text-xs text-fg-tertiary">
+                  {disk
+                    ? `Used ${(disk.used / diskUnitBytes).toFixed(1)} ${diskUnit} of ${(disk.total / diskUnitBytes).toFixed(1)} ${diskUnit}`
+                    : 'Used capacity unavailable'}
+                </p>
+              )}
             </section>
           )
         })}

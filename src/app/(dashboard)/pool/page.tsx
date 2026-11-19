@@ -166,6 +166,12 @@ export default function PoolPage() {
     }
   }, [executionPool])
   const nodes = current?.nodes ?? []
+  const diskUsed = sum(nodes, (node) => node.disk[1])
+  const diskTotal = sum(nodes, (node) => node.disk[2])
+  const dataDisk =
+    current && diskUsed !== null && diskTotal && diskUsed <= diskTotal
+      ? { used: diskUsed, total: diskTotal }
+      : null
   const ready = nodes.filter((node) => node.status === 'ready')
   const cards = [
     {
@@ -265,15 +271,15 @@ export default function PoolPage() {
       title: 'Disk',
       bar: (
         <CapacityBar
-          label="Physical disk used"
-          value={sum(nodes, (n) => n.disk[1])}
-          capacity={sum(nodes, (n) => n.disk[2])}
+          label="E2B data disk used"
+          value={diskUsed}
+          capacity={diskTotal}
         />
       ),
       rows: [
         ['Sandbox allocation', gib(sum(nodes, (n) => n.disk[0]))],
-        ['Physical used', gib(sum(nodes, (n) => n.disk[1]))],
-        ['Physical capacity', gib(sum(nodes, (n) => n.disk[2]))],
+        ['Data disk used', gib(diskUsed)],
+        ['Data disk capacity', gib(diskTotal)],
       ],
     },
   ]
@@ -285,7 +291,7 @@ export default function PoolPage() {
         pool={executionPool}
         hugePages={current ? readyHugePages(nodes) : null}
         hugePagesObservedAt={current?.observedAt}
-        diskCapacity={current ? sum(nodes, (node) => node.disk[2]) : null}
+        dataDisk={dataDisk}
       />
       {current && (
         <PoolFleet
