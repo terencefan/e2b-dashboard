@@ -56,8 +56,6 @@ export function SandboxesHeader({
           <SandboxesTableFilters className="w-full min-w-0 sm:w-auto" />
         </Suspense>
 
-        <div className="hidden w-2 shrink-0 sm:block" aria-hidden="true" />
-
         <span className="prose-label-highlight h-9 flex w-full min-w-0 items-center gap-1 uppercase sm:w-auto">
           {showFilteredRowCount ? (
             <>
