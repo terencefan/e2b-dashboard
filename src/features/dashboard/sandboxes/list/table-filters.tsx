@@ -138,6 +138,55 @@ const TemplateFilter = memo(function TemplateFilter() {
   )
 })
 
+function MetadataFilter() {
+  const filters = useSandboxListTableStore((state) => state.metadataFilters)
+  const setFilters = useSandboxListTableStore(
+    (state) => state.setMetadataFilters
+  )
+  const [key, setKey] = React.useState('')
+  const [value, setValue] = React.useState('')
+  const normalizedKey = key.trim()
+  const canSubmit = Boolean(
+    normalizedKey &&
+      normalizedKey !== 'e2b_pool' &&
+      (filters.some(([k]) => k === normalizedKey) || filters.length < 10)
+  )
+
+  return (
+    <form
+      className="flex max-w-[calc(100vw-2rem)] flex-col gap-2 p-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!canSubmit) return
+        setFilters([
+          ...filters.filter(([k]) => k !== normalizedKey),
+          [normalizedKey, value],
+        ])
+        setKey('')
+        setValue('')
+      }}
+    >
+      <Input
+        aria-label="Metadata key"
+        placeholder="Key, e.g. pipeline"
+        value={key}
+        maxLength={128}
+        onChange={(e) => setKey(e.target.value)}
+      />
+      <Input
+        aria-label="Metadata value"
+        placeholder="Exact value, e.g. swe2"
+        value={value}
+        maxLength={512}
+        onChange={(e) => setValue(e.target.value)}
+      />
+      <Button type="submit" variant="secondary" disabled={!canSubmit}>
+        Apply metadata filter
+      </Button>
+    </form>
+  )
+}
+
 const ResourcesFilter = memo(function ResourcesFilter() {
   const cpuCount = useSandboxListTableStore((state) => state.cpuCount)
   const setCpuCount = useSandboxListTableStore((state) => state.setCpuCount)
@@ -288,6 +337,13 @@ const SandboxesTableFilters = memo(function SandboxesTableFilters({
   const setCpuCount = useSandboxListTableStore((state) => state.setCpuCount)
   const setMemoryMB = useSandboxListTableStore((state) => state.setMemoryMB)
 
+  const metadataFilters = useSandboxListTableStore(
+    (state) => state.metadataFilters
+  )
+  const setMetadataFilters = useSandboxListTableStore(
+    (state) => state.setMetadataFilters
+  )
+
   const handleTemplateFilterClick = useCallback(
     (filter: string) => {
       setTemplateFilters(templateFilters.filter((t) => t !== filter))
@@ -326,6 +382,14 @@ const SandboxesTableFilters = memo(function SandboxesTableFilters({
               </DropdownMenuPortal>
             </DropdownMenuSub>
             <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Metadata</DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  <MetadataFilter />
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
               <DropdownMenuSubTrigger>Resources</DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
@@ -353,6 +417,16 @@ const SandboxesTableFilters = memo(function SandboxesTableFilters({
             onClick={() => handleTemplateFilterClick(filter)}
           />
         ))}
+      {metadataFilters.map(([key, value]) => (
+        <TableFilterButton
+          key={key}
+          label="Metadata"
+          value={`${key}=${value}`}
+          onClick={() =>
+            setMetadataFilters(metadataFilters.filter(([item]) => item !== key))
+          }
+        />
+      ))}
       {cpuCount !== undefined && (
         <TableFilterButton
           label="CPU"

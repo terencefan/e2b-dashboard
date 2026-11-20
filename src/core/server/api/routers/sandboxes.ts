@@ -23,6 +23,22 @@ export const sandboxesRouter = createTRPCRouter({
         cursor: z.string().optional(),
         limit: z.number().int().min(1).max(100).default(50),
         states: z.array(z.enum(['running', 'paused'])).optional(),
+        metadata: z
+          .array(
+            z.tuple([
+              z
+                .string()
+                .min(1)
+                .max(128)
+                .refine((key) => key !== 'e2b_pool'),
+              z.string().max(512),
+            ])
+          )
+          .max(10)
+          .refine(
+            (pairs) => new Set(pairs.map(([key]) => key)).size === pairs.length
+          )
+          .optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -31,6 +47,7 @@ export const sandboxesRouter = createTRPCRouter({
           cursor: input.cursor,
           limit: input.limit,
           states: input.states,
+          metadata: input.metadata,
         })
       if (!sandboxesResult.ok) {
         throwTRPCErrorFromRepoError(sandboxesResult.error)

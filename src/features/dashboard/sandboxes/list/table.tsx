@@ -1,9 +1,6 @@
 'use client'
 
-import {
-  keepPreviousData,
-  useSuspenseInfiniteQuery,
-} from '@tanstack/react-query'
+import { useSuspenseInfiniteQuery } from '@tanstack/react-query'
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -325,6 +322,7 @@ export function NewSandboxesTable({
   | 'clearUsageFilters'
 >) {
   const trpc = useTRPC()
+  const metadata = useSandboxListTableStore((state) => state.metadataFilters)
   const pollingInterval = useSandboxListTableStore(
     (state) => state.pollingInterval
   )
@@ -338,14 +336,16 @@ export function NewSandboxesTable({
     isFetchingNextPage,
   } = useSuspenseInfiniteQuery(
     trpc.sandboxes.listSandboxesPaginated.infiniteQueryOptions(
-      { limit: SANDBOXES_PAGE_SIZE },
+      {
+        limit: SANDBOXES_PAGE_SIZE,
+        metadata: metadata.length ? metadata : undefined,
+      },
       {
         getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
         initialCursor: undefined,
         refetchOnMount: 'always',
         refetchOnWindowFocus: true,
         refetchInterval: pollingInterval > 0 ? pollingInterval * 1_000 : false,
-        placeholderData: keepPreviousData,
       }
     )
   )
@@ -353,7 +353,7 @@ export function NewSandboxesTable({
   const [states, setStates] = useState<SandboxListState[]>(DEFAULT_LIST_STATES)
   const showEnded = states.includes('ended')
   const showActive = states.includes('running') || states.includes('paused')
-  const history = useSandboxHistory(showEnded)
+  const history = useSandboxHistory(showEnded, metadata)
   const sandboxes = useMemo<SandboxListRow[]>(() => {
     const active = data.pages.flatMap((page) => page.sandboxes)
     const activeIDs = new Set(active.map((row) => row.sandboxID))

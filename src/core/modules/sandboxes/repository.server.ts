@@ -37,6 +37,7 @@ export interface ListSandboxesOptions {
   cursor?: string
   limit: number
   states?: SandboxState[]
+  metadata?: [string, string][]
 }
 
 export interface ListSandboxesResult {
@@ -230,6 +231,9 @@ export function createSandboxesRepository(
         params: {
           query: {
             state: options.states ?? DEFAULT_SANDBOX_STATES,
+            metadata: options.metadata?.length
+              ? new URLSearchParams(options.metadata).toString()
+              : undefined,
             nextToken: options.cursor,
             limit: options.limit,
           },

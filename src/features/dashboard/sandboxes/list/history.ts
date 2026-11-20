@@ -10,7 +10,7 @@ export type EndedSandbox = {
   memoryMB: number
   creatorID?: string
   alias?: never
-  metadata?: never
+  metadata?: Record<string, string>
   diskSizeMB?: never
   state: 'ended'
 }
@@ -20,14 +20,19 @@ type HistoryPage = {
   nextCursor: string
 }
 
-export function useSandboxHistory(enabled: boolean) {
+export function useSandboxHistory(
+  enabled: boolean,
+  metadata: [string, string][]
+) {
   const { executionPool = 'pilot' } = useClientConfig()
   return useInfiniteQuery({
-    queryKey: ['sandbox-history', executionPool],
+    queryKey: ['sandbox-history', executionPool, metadata],
     enabled,
     initialPageParam: '',
     queryFn: async ({ pageParam, signal }) => {
       const params = new URLSearchParams({ pool: executionPool })
+      if (metadata.length)
+        params.set('metadata', new URLSearchParams(metadata).toString())
       if (pageParam) params.set('cursor', pageParam)
       const response = await fetch(`/access/sandbox-history?${params}`, {
         cache: 'no-store',

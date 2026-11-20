@@ -43,6 +43,7 @@ export const SandboxesTableBody = ({
     return (
       state.startedAtFilter !== undefined ||
       state.templateFilters.length > 0 ||
+      state.metadataFilters.length > 0 ||
       state.cpuCount !== undefined ||
       state.memoryMB !== undefined ||
       Boolean(state.globalFilter)

@@ -46,6 +46,7 @@ interface SandboxListTableState {
   // Filter state
   startedAtFilter: SandboxStartedAtFilter
   templateFilters: string[]
+  metadataFilters: [string, string][]
   cpuCount: number | undefined
   memoryMB: number | undefined
 }
@@ -58,6 +59,7 @@ interface SandboxListTableActions {
   // Filter actions
   setStartedAtFilter: (filter: SandboxStartedAtFilter) => void
   setTemplateFilters: (filters: string[]) => void
+  setMetadataFilters: (filters: [string, string][]) => void
   setCpuCount: (count: number | undefined) => void
   setMemoryMB: (mb: number | undefined) => void
   resetFilters: () => void
@@ -79,6 +81,7 @@ const initialState: SandboxListTableState = {
   // Filter state
   startedAtFilter: undefined,
   templateFilters: [],
+  metadataFilters: [],
   cpuCount: undefined,
   memoryMB: undefined,
 }
@@ -239,6 +242,8 @@ export const useSandboxListTableStore = create<SandboxListTableStore>()(
         })
       },
 
+      setMetadataFilters: (metadataFilters) => set({ metadataFilters }),
+
       resetFilters: () => {
         let didResetFilters = false
 
@@ -246,6 +251,7 @@ export const useSandboxListTableStore = create<SandboxListTableStore>()(
           const hasFilterChanges =
             state.startedAtFilter !== initialState.startedAtFilter ||
             state.templateFilters.length > 0 ||
+            state.metadataFilters.length > 0 ||
             state.cpuCount !== initialState.cpuCount ||
             state.memoryMB !== initialState.memoryMB ||
             state.globalFilter !== initialState.globalFilter
@@ -259,6 +265,7 @@ export const useSandboxListTableStore = create<SandboxListTableStore>()(
           return {
             startedAtFilter: initialState.startedAtFilter,
             templateFilters: initialState.templateFilters,
+            metadataFilters: initialState.metadataFilters,
             cpuCount: initialState.cpuCount,
             memoryMB: initialState.memoryMB,
             globalFilter: initialState.globalFilter,
