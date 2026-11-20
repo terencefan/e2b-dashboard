@@ -40,6 +40,7 @@ function SandboxesPoolContent({ pool }: { pool: string }) {
       )}
       <Suspense fallback={<LoadingLayout />}>
         <NewSandboxesTable
+          creator={creator}
           creatorSandboxIDs={creatorSandboxIDs}
           templateID={template}
           clearUsageFilters={() => {

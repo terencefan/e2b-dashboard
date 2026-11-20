@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { type ReactNode, Suspense } from 'react'
 import { PollingButton } from '@/ui/polling-button'
 import { OpenSandboxDialog } from './open-sandbox-dialog'
 import {
@@ -13,12 +13,14 @@ interface SandboxesHeaderProps {
   table: SandboxListTable
   onRefresh: () => void
   isRefreshing: boolean
+  stateFilter: ReactNode
 }
 
 export function SandboxesHeader({
   table,
   onRefresh,
   isRefreshing,
+  stateFilter,
 }: SandboxesHeaderProps) {
   'use no memo'
 
@@ -42,6 +44,8 @@ export function SandboxesHeader({
         <div className="w-full sm:w-auto sm:shrink-0">
           <SearchInput />
         </div>
+
+        {stateFilter}
 
         <Suspense fallback={null}>
           <SandboxesTableFilters className="w-full min-w-0 sm:w-auto" />

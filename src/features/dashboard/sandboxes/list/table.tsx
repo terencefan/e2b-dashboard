@@ -15,9 +15,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { subHours } from 'date-fns'
-import { useEffect, useMemo, useRef } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
-import type { Sandboxes } from '@/core/modules/sandboxes/models'
 import { useSandboxListTableStore } from '@/features/dashboard/sandboxes/list/stores/table-store'
 import { useColumnSizeVars } from '@/lib/hooks/use-column-size-vars'
 import { cn } from '@/lib/utils'
@@ -31,6 +30,12 @@ import {
 } from '@/ui/data-table'
 import { SIDEBAR_TRANSITION_CLASSNAMES } from '@/ui/primitives/sidebar'
 import { SandboxesHeader } from './header'
+import { useSandboxHistory } from './history'
+import {
+  DEFAULT_LIST_STATES,
+  type SandboxListState,
+  StateFilter,
+} from './state-filter'
 import type { SandboxStartedAtFilter } from './stores/table-store'
 import { getSandboxListEffectiveSorting } from './stores/table-store'
 import { SandboxesTableBody } from './table-body'
@@ -84,13 +89,18 @@ function buildColumnFilters({
 const SANDBOXES_PAGE_SIZE = 50
 
 interface SandboxesTableViewProps {
-  sandboxes: Sandboxes
+  sandboxes: SandboxListRow[]
+  stateFilter: ReactNode
+  stateFiltered: boolean
+  historyMessage?: string
+  resetStates: () => void
   columns: ColumnDef<SandboxListRow>[]
   refetch: () => void
   isFetching: boolean
   hasNextPage?: boolean
   isFetchingNextPage?: boolean
   fetchNextPage?: () => void
+  creator?: string
   creatorSandboxIDs?: ReadonlySet<string>
   templateID?: string
   clearUsageFilters?: () => void
@@ -98,12 +108,17 @@ interface SandboxesTableViewProps {
 
 function SandboxesTableView({
   sandboxes,
+  stateFilter,
+  stateFiltered,
+  historyMessage,
+  resetStates,
   columns,
   refetch,
   isFetching,
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
+  creator,
   creatorSandboxIDs,
   templateID,
   clearUsageFilters,
@@ -145,14 +160,17 @@ function SandboxesTableView({
 
   const usageFilteredSandboxes = useMemo(
     () =>
-      creatorSandboxIDs || templateID
+      creator || templateID
         ? sandboxes.filter(
             (row) =>
-              (!creatorSandboxIDs || creatorSandboxIDs.has(row.sandboxID)) &&
+              (!creator ||
+                (row.state === 'ended'
+                  ? (row.creatorID ?? 'unknown') === creator
+                  : creatorSandboxIDs?.has(row.sandboxID))) &&
               (!templateID || row.templateID === templateID)
           )
         : sandboxes,
-    [creatorSandboxIDs, sandboxes, templateID]
+    [creator, creatorSandboxIDs, sandboxes, templateID]
   )
 
   const activeSorting = getSandboxListEffectiveSorting(sorting)
@@ -204,7 +222,13 @@ function SandboxesTableView({
         table={table}
         onRefresh={refetch}
         isRefreshing={isFetching}
+        stateFilter={stateFilter}
       />
+      {historyMessage && (
+        <output className="mt-2 text-xs text-fg-tertiary">
+          {historyMessage}
+        </output>
+      )}
 
       <div
         className={cn(
@@ -256,7 +280,12 @@ function SandboxesTableView({
             isFetchingNextPage={isFetchingNextPage}
             fetchNextPage={fetchNextPage}
             clearUsageFilters={
-              creatorSandboxIDs || templateID ? clearUsageFilters : undefined
+              stateFiltered || creator || templateID
+                ? () => {
+                    resetStates()
+                    clearUsageFilters?.()
+                  }
+                : undefined
             }
           />
         </DataTable>
@@ -266,12 +295,13 @@ function SandboxesTableView({
 }
 
 export function NewSandboxesTable({
+  creator,
   creatorSandboxIDs,
   templateID,
   clearUsageFilters,
 }: Pick<
   SandboxesTableViewProps,
-  'creatorSandboxIDs' | 'templateID' | 'clearUsageFilters'
+  'creator' | 'creatorSandboxIDs' | 'templateID' | 'clearUsageFilters'
 >) {
   const trpc = useTRPC()
   const pollingInterval = useSandboxListTableStore(
@@ -299,21 +329,62 @@ export function NewSandboxesTable({
     )
   )
 
-  const sandboxes = useMemo(
-    () => data.pages.flatMap((page) => page.sandboxes),
-    [data]
-  )
+  const [states, setStates] = useState<SandboxListState[]>(DEFAULT_LIST_STATES)
+  const showEnded = states.includes('ended')
+  const showActive = states.includes('running') || states.includes('paused')
+  const history = useSandboxHistory(showEnded)
+  const sandboxes = useMemo<SandboxListRow[]>(() => {
+    const active = data.pages.flatMap((page) => page.sandboxes)
+    const activeIDs = new Set(active.map((row) => row.sandboxID))
+    const visibleActive = active.filter((row) => states.includes(row.state))
+    const ended = showEnded
+      ? (history.data?.pages.flatMap((page) => page.sandboxes) ?? [])
+      : []
+    const seen = new Set(activeIDs)
+    const visibleEnded = ended.flatMap((row) => {
+      if (seen.has(row.sandboxID)) return []
+      seen.add(row.sandboxID)
+      return [{ ...row, state: 'ended' as const }]
+    })
+    return [...visibleActive, ...visibleEnded]
+  }, [data, history.data, showEnded, states])
 
   return (
     <SandboxesTableView
       sandboxes={sandboxes}
       columns={sandboxListColumns}
-      refetch={refetch}
-      isFetching={isFetching}
-      hasNextPage={hasNextPage}
-      isFetchingNextPage={isFetchingNextPage}
-      fetchNextPage={fetchNextPage}
+      refetch={() => {
+        if (showActive) void refetch()
+        if (showEnded) void history.refetch()
+      }}
+      isFetching={
+        (showActive && isFetching) || (showEnded && history.isFetching)
+      }
+      hasNextPage={Boolean(
+        (showActive && hasNextPage) || (showEnded && history.hasNextPage)
+      )}
+      isFetchingNextPage={
+        (showActive && isFetchingNextPage) ||
+        (showEnded && history.isFetchingNextPage)
+      }
+      fetchNextPage={() => {
+        if (showActive && hasNextPage) void fetchNextPage()
+        if (showEnded && history.hasNextPage) void history.fetchNextPage()
+      }}
+      creator={creator}
       creatorSandboxIDs={creatorSandboxIDs}
+      stateFilter={<StateFilter selected={states} onChange={setStates} />}
+      stateFiltered={!showActive || states.length !== 2 || showEnded}
+      resetStates={() => setStates(DEFAULT_LIST_STATES)}
+      historyMessage={
+        !showEnded
+          ? undefined
+          : history.isError
+            ? 'Ended sandbox history is temporarily unavailable.'
+            : history.isPending
+              ? 'Loading ended sandboxes…'
+              : 'Ended history covers up to 7 days.'
+      }
       templateID={templateID}
       clearUsageFilters={clearUsageFilters}
     />

@@ -1,4 +1,5 @@
 import { type RefObject, useEffect } from 'react'
+import type { Sandbox } from '@/core/modules/sandboxes/models'
 import { useVirtualRows } from '@/lib/hooks/use-virtual-rows'
 import { DataTableBody } from '@/ui/data-table'
 import { LoadMoreButton } from '@/ui/pagination-buttons'
@@ -70,7 +71,7 @@ export const SandboxesTableBody = ({
   // Live metrics only exist for running sandboxes.
   const runningVisibleSandboxes = rows
     .map((row) => row.original)
-    .filter((sandbox) => sandbox.state === 'running')
+    .filter((sandbox): sandbox is Sandbox => sandbox.state === 'running')
 
   useSandboxesMetrics({
     sandboxes: runningVisibleSandboxes,

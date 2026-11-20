@@ -8,7 +8,7 @@ import type { DateRange } from 'react-day-picker'
 import type { Sandbox } from '@/core/modules/sandboxes/models'
 import { getTimestampColumnSize } from '@/features/dashboard/common/timestamp-column'
 import { useTimezone } from '@/features/dashboard/timezone'
-
+import type { EndedSandbox } from './history'
 import {
   CpuUsageCell,
   DiskUsageCell,
@@ -21,7 +21,7 @@ import {
   TemplateCell,
 } from './table-cells'
 
-export type SandboxListRow = Sandbox
+export type SandboxListRow = Sandbox | EndedSandbox
 export type SandboxListTable = Table<SandboxListRow>
 
 // FILTERS

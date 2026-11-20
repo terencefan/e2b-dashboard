@@ -145,6 +145,8 @@ export const DiskUsageCell = ({
         sandboxId={row.original.sandboxID}
         totalDiskGb={row.original.diskSizeMB / 1024}
       />
+    ) : row.original.state === 'ended' ? (
+      <span className="text-fg-tertiary">—</span>
     ) : (
       <ResourceUsage
         type="disk"
@@ -158,6 +160,15 @@ export const DiskUsageCell = ({
 
 export function StateCell({ row }: CellContext<SandboxListRow, unknown>) {
   const state = row.original.state
+
+  if (state === 'ended') {
+    return (
+      <Badge variant="error" className="uppercase" title={row.original.endedAt}>
+        <DotIcon className="size-3 fill-current" />
+        Ended
+      </Badge>
+    )
+  }
 
   if (state === 'paused') {
     return (
@@ -335,6 +346,17 @@ export function SandboxUptimeCell({
 }: CellContext<SandboxListRow, unknown>) {
   const now = useContext(SandboxClockContext)
   const startedAt = Date.parse(row.original.startedAt)
+  if (row.original.state === 'ended' && Number.isFinite(startedAt)) {
+    const endedAt = Date.parse(row.original.endedAt)
+    if (Number.isFinite(endedAt)) {
+      return (
+        <span className={TIMESTAMP_TEXT_CLASSNAME}>
+          {formatDurationCompact(Math.max(0, endedAt - startedAt))}
+        </span>
+      )
+    }
+  }
+
   if (
     row.original.state !== 'running' ||
     now === null ||
