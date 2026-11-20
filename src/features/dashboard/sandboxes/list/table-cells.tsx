@@ -17,7 +17,12 @@ import { useTimezone } from '@/features/dashboard/timezone'
 import { formatDateParts, formatDurationCompact } from '@/lib/utils/formatting'
 import { Badge } from '@/ui/primitives/badge'
 import { Button } from '@/ui/primitives/button'
-import { DotIcon, ExternalLinkIcon, PausedIcon } from '@/ui/primitives/icons'
+import {
+  ChevronDownIcon,
+  DotIcon,
+  ExternalLinkIcon,
+  PausedIcon,
+} from '@/ui/primitives/icons'
 import {
   Popover,
   PopoverContent,
@@ -212,16 +217,57 @@ export function TemplateCell({
     )
   }
 
+  async function copyTemplateId() {
+    try {
+      await navigator.clipboard.writeText(templateId)
+      toast.success('Template ID copied')
+    } catch {
+      toast.error('Could not copy template ID')
+    }
+  }
+
   return (
-    <Button asChild variant="link-table" size="none">
-      <Link
-        href={PROTECTED_URLS.TEMPLATE_OVERVIEW(templateId)}
-        onClick={(e) => e.stopPropagation()}
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`View template ${templateIdentifier}`}
+          className="flex w-full min-w-0 cursor-pointer items-center justify-between gap-1.5 text-left hover:text-fg focus-visible:outline focus-visible:outline-offset-2"
+        >
+          <span className="min-w-0 truncate underline">
+            {templateIdentifier}
+          </span>
+          <ChevronDownIcon className="size-3 shrink-0" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        aria-label="Sandbox template"
+        align="start"
+        className="w-96 max-w-[calc(100vw-20px)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto"
       >
-        <span className="min-w-0 truncate">{templateIdentifier}</span>
-        <ExternalLinkIcon className="size-3 shrink-0" />
-      </Link>
-    </Button>
+        <p className="break-all text-sm font-medium">{templateIdentifier}</p>
+        <dl className="mt-2 text-xs">
+          <dt className="text-fg-tertiary">Template ID</dt>
+          <dd className="break-all font-mono">{templateId}</dd>
+        </dl>
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-stroke pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="small"
+            onClick={copyTemplateId}
+          >
+            Copy ID
+          </Button>
+          <Button asChild variant="secondary" size="small">
+            <Link href={PROTECTED_URLS.TEMPLATE_OVERVIEW(templateId)}>
+              Open template
+              <ExternalLinkIcon className="size-3 shrink-0" />
+            </Link>
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
