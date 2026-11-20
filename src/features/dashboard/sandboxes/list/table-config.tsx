@@ -122,6 +122,16 @@ export const sandboxListColumns: ColumnDef<SandboxListRow>[] = [
     },
   },
   {
+    id: 'uptime',
+    header: 'Uptime',
+    cell: SandboxUptimeCell,
+    size: 100,
+    enableResizing: false,
+    enableSorting: false,
+    enableColumnFilter: false,
+    enableGlobalFilter: false,
+  },
+  {
     accessorKey: 'sandboxID',
     header: 'Instance',
     cell: IdCell,
@@ -143,16 +153,6 @@ export const sandboxListColumns: ColumnDef<SandboxListRow>[] = [
     enableSorting: false,
     enableColumnFilter: true,
     filterFn: 'equalsString',
-    enableGlobalFilter: false,
-  },
-  {
-    id: 'uptime',
-    header: 'Uptime',
-    cell: SandboxUptimeCell,
-    size: 100,
-    enableResizing: false,
-    enableSorting: false,
-    enableColumnFilter: false,
     enableGlobalFilter: false,
   },
   {
