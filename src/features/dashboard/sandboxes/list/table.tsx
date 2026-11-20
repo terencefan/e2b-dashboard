@@ -92,7 +92,8 @@ interface SandboxesTableViewProps {
   isFetchingNextPage?: boolean
   fetchNextPage?: () => void
   creatorSandboxIDs?: ReadonlySet<string>
-  clearCreator?: () => void
+  templateID?: string
+  clearUsageFilters?: () => void
 }
 
 function SandboxesTableView({
@@ -104,7 +105,8 @@ function SandboxesTableView({
   isFetchingNextPage,
   fetchNextPage,
   creatorSandboxIDs,
-  clearCreator,
+  templateID,
+  clearUsageFilters,
 }: SandboxesTableViewProps) {
   'use no memo'
 
@@ -141,19 +143,23 @@ function SandboxesTableView({
     [startedAtFilter, templateFilters, cpuCount, memoryMB]
   )
 
-  const creatorFilteredSandboxes = useMemo(
+  const usageFilteredSandboxes = useMemo(
     () =>
-      creatorSandboxIDs
-        ? sandboxes.filter((row) => creatorSandboxIDs.has(row.sandboxID))
+      creatorSandboxIDs || templateID
+        ? sandboxes.filter(
+            (row) =>
+              (!creatorSandboxIDs || creatorSandboxIDs.has(row.sandboxID)) &&
+              (!templateID || row.templateID === templateID)
+          )
         : sandboxes,
-    [creatorSandboxIDs, sandboxes]
+    [creatorSandboxIDs, sandboxes, templateID]
   )
 
   const activeSorting = getSandboxListEffectiveSorting(sorting)
 
   const table = useReactTable<SandboxListRow>({
     columns,
-    data: creatorFilteredSandboxes,
+    data: usageFilteredSandboxes,
     state: {
       globalFilter,
       sorting: activeSorting,
@@ -249,7 +255,9 @@ function SandboxesTableView({
             hasNextPage={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             fetchNextPage={fetchNextPage}
-            clearCreator={creatorSandboxIDs ? clearCreator : undefined}
+            clearUsageFilters={
+              creatorSandboxIDs || templateID ? clearUsageFilters : undefined
+            }
           />
         </DataTable>
       </div>
@@ -259,8 +267,12 @@ function SandboxesTableView({
 
 export function NewSandboxesTable({
   creatorSandboxIDs,
-  clearCreator,
-}: Pick<SandboxesTableViewProps, 'creatorSandboxIDs' | 'clearCreator'>) {
+  templateID,
+  clearUsageFilters,
+}: Pick<
+  SandboxesTableViewProps,
+  'creatorSandboxIDs' | 'templateID' | 'clearUsageFilters'
+>) {
   const trpc = useTRPC()
   const pollingInterval = useSandboxListTableStore(
     (state) => state.pollingInterval
@@ -302,7 +314,8 @@ export function NewSandboxesTable({
       isFetchingNextPage={isFetchingNextPage}
       fetchNextPage={fetchNextPage}
       creatorSandboxIDs={creatorSandboxIDs}
-      clearCreator={clearCreator}
+      templateID={templateID}
+      clearUsageFilters={clearUsageFilters}
     />
   )
 }

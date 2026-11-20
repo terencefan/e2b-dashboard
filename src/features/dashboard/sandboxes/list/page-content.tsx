@@ -3,22 +3,27 @@
 import { Suspense, useMemo, useState } from 'react'
 import { useClientConfig } from '@/features/client-config-provider'
 import LoadingLayout from '@/features/dashboard/loading-layout'
-import { PoolUsage, usePoolUsage } from '@/features/dashboard/pool/usage'
+import {
+  filterSandboxUsage,
+  PoolUsage,
+  usePoolUsage,
+} from '@/features/dashboard/pool/usage'
 import { NewSandboxesTable } from './table'
 
 function SandboxesPoolContent({ pool }: { pool: string }) {
   const [creator, setCreator] = useState('')
+  const [template, setTemplate] = useState('')
   const { usage, enabled, failed } = usePoolUsage(pool)
   const creatorSandboxIDs = useMemo(
     () =>
       creator && usage
         ? new Set(
-            usage.sandboxes
-              .filter((row) => (row.creator?.id ?? 'unknown') === creator)
-              .map((row) => row.sandboxID)
+            filterSandboxUsage(usage.sandboxes, template, creator).map(
+              (row) => row.sandboxID
+            )
           )
         : undefined,
-    [creator, usage]
+    [creator, template, usage]
   )
 
   return (
@@ -29,12 +34,18 @@ function SandboxesPoolContent({ pool }: { pool: string }) {
           failed={failed}
           creator={creator}
           onCreatorChange={setCreator}
+          template={template}
+          onTemplateChange={setTemplate}
         />
       )}
       <Suspense fallback={<LoadingLayout />}>
         <NewSandboxesTable
           creatorSandboxIDs={creatorSandboxIDs}
-          clearCreator={() => setCreator('')}
+          templateID={template}
+          clearUsageFilters={() => {
+            setCreator('')
+            setTemplate('')
+          }}
         />
       </Suspense>
     </div>

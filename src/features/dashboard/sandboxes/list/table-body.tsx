@@ -21,7 +21,7 @@ interface SandboxesTableBodyProps {
   hasNextPage?: boolean
   isFetchingNextPage?: boolean
   fetchNextPage?: () => void
-  clearCreator?: () => void
+  clearUsageFilters?: () => void
 }
 
 export const SandboxesTableBody = ({
@@ -30,7 +30,7 @@ export const SandboxesTableBody = ({
   hasNextPage = false,
   isFetchingNextPage = false,
   fetchNextPage,
-  clearCreator,
+  clearUsageFilters,
 }: SandboxesTableBodyProps) => {
   'use no memo'
 
@@ -101,7 +101,7 @@ export const SandboxesTableBody = ({
 
   if (isEmpty) {
     const emptyState =
-      hasFilter || clearCreator ? (
+      hasFilter || clearUsageFilters ? (
         <SandboxesListEmpty
           title="No Results Found"
           description="No sandboxes match your current filters."
@@ -110,7 +110,7 @@ export const SandboxesTableBody = ({
               variant="secondary"
               onClick={() => {
                 resetFilters()
-                clearCreator?.()
+                clearUsageFilters?.()
               }}
               className="w-full"
             >
