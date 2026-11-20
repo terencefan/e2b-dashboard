@@ -3,7 +3,7 @@
 import { Suspense, useMemo, useState } from 'react'
 import { useClientConfig } from '@/features/client-config-provider'
 import LoadingLayout from '@/features/dashboard/loading-layout'
-import { PoolUsage, usePoolUsage } from '@/features/dashboard/pool/usage'
+import { usePoolUsage } from '@/features/dashboard/pool/usage'
 import { FilterDropdown } from './filter-dropdown'
 import { NewSandboxesTable } from './table'
 
@@ -46,15 +46,11 @@ function SandboxesPoolContent({ pool }: { pool: string }) {
         : undefined,
     [creatorRows, creators.length]
   )
-  const visible = creatorRows.filter(
-    (row) => !templates.length || templates.includes(row.templateID)
-  )
-
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 md:max-w-[calc(100svw-var(--sidebar-width-active))] md:p-6">
-      {enabled && <PoolUsage usage={usage} failed={failed} visible={visible} />}
       <Suspense fallback={<LoadingLayout />}>
         <NewSandboxesTable
+          heatmap={enabled ? { usage, failed } : undefined}
           creators={creators}
           creatorSandboxIDs={creatorSandboxIDs}
           templates={templates}

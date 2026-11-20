@@ -17,6 +17,7 @@ import {
 import { subHours } from 'date-fns'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
+import { PoolUsage, type Usage } from '@/features/dashboard/pool/usage'
 import { useSandboxListTableStore } from '@/features/dashboard/sandboxes/list/stores/table-store'
 import { useColumnSizeVars } from '@/lib/hooks/use-column-size-vars'
 import { cn } from '@/lib/utils'
@@ -90,6 +91,7 @@ const SANDBOXES_PAGE_SIZE = 50
 
 interface SandboxesTableViewProps {
   sandboxes: SandboxListRow[]
+  heatmap?: { usage?: Usage; failed: boolean }
   stateFilter: ReactNode
   usageFilters?: ReactNode
   stateFiltered: boolean
@@ -109,6 +111,7 @@ interface SandboxesTableViewProps {
 
 function SandboxesTableView({
   sandboxes,
+  heatmap,
   stateFilter,
   usageFilters,
   stateFiltered,
@@ -220,6 +223,14 @@ function SandboxesTableView({
 
   return (
     <ClientOnly className="flex min-h-64 flex-1 flex-col">
+      {heatmap && (
+        <div className="mb-3">
+          <PoolUsage
+            {...heatmap}
+            rows={table.getRowModel().rows.map((row) => row.original)}
+          />
+        </div>
+      )}
       <SandboxesHeader
         table={table}
         onRefresh={refetch}
@@ -298,6 +309,7 @@ function SandboxesTableView({
 }
 
 export function NewSandboxesTable({
+  heatmap,
   creators,
   creatorSandboxIDs,
   templates,
@@ -305,6 +317,7 @@ export function NewSandboxesTable({
   clearUsageFilters,
 }: Pick<
   SandboxesTableViewProps,
+  | 'heatmap'
   | 'creators'
   | 'creatorSandboxIDs'
   | 'templates'
@@ -360,6 +373,7 @@ export function NewSandboxesTable({
   return (
     <SandboxesTableView
       sandboxes={sandboxes}
+      heatmap={heatmap}
       columns={sandboxListColumns}
       refetch={() => {
         if (showActive) void refetch()

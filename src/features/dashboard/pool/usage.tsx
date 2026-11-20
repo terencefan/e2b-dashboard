@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { SandboxListRow } from '@/features/dashboard/sandboxes/list/table-config'
 
 const metrics = [
   ['cpu', 'CPU'],
@@ -14,7 +15,7 @@ export type SandboxUsage = {
   alias?: string
   creator?: { id: string; name?: string }
 } & Record<Metric, number | null>
-type Usage = {
+export type Usage = {
   pool: string
   observedAt: string
   sandboxes: SandboxUsage[]
@@ -71,13 +72,28 @@ export function usePoolUsage(pool: string) {
 export function PoolUsage({
   usage,
   failed,
-  visible,
+  rows,
 }: {
   usage?: Usage
   failed: boolean
-  visible: SandboxUsage[]
+  rows: SandboxListRow[]
 }) {
   const [active, setActive] = useState<string>()
+  const samples = new Map(usage?.sandboxes.map((row) => [row.sandboxID, row]))
+  const visible = rows
+    .filter((row) => row.state === 'running')
+    .map((row) => {
+      const sample = samples.get(row.sandboxID)
+      return {
+        sandboxID: row.sandboxID,
+        templateID: row.templateID,
+        alias: row.alias,
+        creator: sample?.creator,
+        cpu: sample?.cpu ?? null,
+        memory: sample?.memory ?? null,
+        disk: sample?.disk ?? null,
+      }
+    })
   const selected = visible.find((row) => row.sandboxID === active)
   const value = (percent: number | null) =>
     percent === null ? 'No sample' : `${percent.toFixed(1)}%`
@@ -140,7 +156,11 @@ export function PoolUsage({
           />
           <span>No sample</span>
         </div>
-        {failed ? (
+        {visible.length === 0 ? (
+          <p className="text-xs text-fg-tertiary">
+            No running sandboxes match this filter.
+          </p>
+        ) : failed ? (
           <output className="text-xs text-accent-warning-highlight">
             {usage
               ? 'Showing the last snapshot.'
@@ -152,12 +172,8 @@ export function PoolUsage({
           </output>
         ) : usage.partial ? (
           <output className="text-xs text-accent-warning-highlight">
-            Some sandbox data is unavailable.
+            Some metrics or creator data is unavailable.
           </output>
-        ) : visible.length === 0 ? (
-          <p className="text-xs text-fg-tertiary">
-            No running sandboxes match this filter.
-          </p>
         ) : selected ? (
           <p className="min-w-0 flex-1 truncate font-mono text-xs text-fg-secondary">
             {selected.sandboxID} ·{' '}
@@ -170,17 +186,21 @@ export function PoolUsage({
               .join(' · ')}
           </p>
         ) : null}
-        {usage && (
-          <span className="prose-label ml-auto shrink-0 text-fg-tertiary uppercase">
-            {visible.length} running ·{' '}
-            <time
-              dateTime={usage.observedAt}
-              title={new Date(usage.observedAt).toLocaleString()}
-            >
-              {new Date(usage.observedAt).toLocaleTimeString()}
-            </time>
-          </span>
-        )}
+        <span className="prose-label ml-auto shrink-0 text-fg-tertiary uppercase">
+          {visible.length} running
+          {usage && (
+            <>
+              {' '}
+              · Metrics{' '}
+              <time
+                dateTime={usage.observedAt}
+                title={new Date(usage.observedAt).toLocaleString()}
+              >
+                {new Date(usage.observedAt).toLocaleTimeString()}
+              </time>
+            </>
+          )}
+        </span>
       </div>
     </section>
   )
