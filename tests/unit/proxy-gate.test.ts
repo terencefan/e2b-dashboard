@@ -98,6 +98,18 @@ describe('runDashboardProxy', () => {
 })
 
 describe('pool URL selection', () => {
+  it.each([
+    'pool',
+    'ool',
+  ])('redirects legacy Heatmap links with %s to Sandboxes', async (param) => {
+    const response = await runDashboardProxy(
+      makeRequest(`/pool/heatmap?${param}=production`, 'e2b_key')
+    )
+    expect(response.headers.get('location')).toBe(
+      `${BASE}/sandboxes?pool=production`
+    )
+  })
+
   it('defaults a direct entry to Pilot even with a previous Production cookie', async () => {
     const request = makeRequest('/sandboxes?search=hello', 'e2b_key')
     request.cookies.set('e2b_pool', 'production')

@@ -23,9 +23,7 @@ export function PoolSwitcher() {
         setSwitching(true)
         // Reloading discards requests and terminal state from the previous pool.
         const destination = new URL(
-          ['/pool', '/pool/heatmap'].includes(location.pathname)
-            ? location.pathname
-            : '/sandboxes',
+          location.pathname === '/pool' ? location.pathname : '/sandboxes',
           location.origin
         )
         destination.searchParams.set('pool', nextPool)

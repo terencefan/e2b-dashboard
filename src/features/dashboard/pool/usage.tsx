@@ -21,12 +21,10 @@ type Usage = {
   partial: boolean
 }
 
-export function PoolUsage({ pool }: { pool: string }) {
-  const [template, setTemplate] = useState('')
-  const [creator, setCreator] = useState('')
-  const [active, setActive] = useState<string>()
+export function usePoolUsage(pool: string) {
   const [usage, setUsage] = useState<Usage>()
   const [failed, setFailed] = useState(false)
+  const [enabled, setEnabled] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -45,67 +43,77 @@ export function PoolUsage({ pool }: { pool: string }) {
         if (!controller.signal.aborted) setFailed(true)
       }
     }
-    void refresh()
-    const timer = window.setInterval(refresh, 30_000)
+    let timer: number | undefined
+    async function start() {
+      try {
+        const capability = await fetch('/access/pool-capability', {
+          signal: controller.signal,
+          cache: 'no-store',
+        })
+        if (capability.status !== 204 || controller.signal.aborted) return
+        setEnabled(true)
+        void refresh()
+        timer = window.setInterval(refresh, 30_000)
+      } catch {
+        // The dashboard can run without the Access Gate.
+      }
+    }
+    void start()
     return () => {
       controller.abort()
       window.clearInterval(timer)
     }
   }, [pool])
 
-  const sandboxes =
-    usage?.pool === pool
-      ? [...usage.sandboxes].sort((a, b) =>
-          a.sandboxID.localeCompare(b.sandboxID)
-        )
-      : []
-  const templates = new Map(
-    sandboxes.map((row) => [row.templateID, row.alias || row.templateID])
-  )
+  return { usage, enabled, failed }
+}
+
+export function PoolUsage({
+  usage,
+  failed,
+  creator,
+  onCreatorChange,
+}: {
+  usage?: Usage
+  failed: boolean
+  creator: string
+  onCreatorChange: (creator: string) => void
+}) {
+  const [active, setActive] = useState<string>()
+  const sandboxes = usage?.sandboxes ?? []
   const creators = new Map(
     sandboxes.map((row) => [
       row.creator?.id ?? 'unknown',
       row.creator?.name || row.creator?.id || 'Unknown creator',
     ])
   )
-  const visible = sandboxes.filter(
-    (row) =>
-      (!template || row.templateID === template) &&
-      (!creator || (row.creator?.id ?? 'unknown') === creator)
-  )
+  const visible = creator
+    ? sandboxes.filter((row) => (row.creator?.id ?? 'unknown') === creator)
+    : sandboxes
   const selected = visible.find((row) => row.sandboxID === active)
   const value = (percent: number | null) =>
     percent === null ? 'No sample' : `${percent.toFixed(1)}%`
 
   return (
-    <section aria-label="Sandbox usage heatmap" className="mt-4 space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          Template
+    <section
+      aria-label="Sandbox usage heatmap"
+      className="shrink-0 border border-stroke bg-bg"
+    >
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-3 border-b border-stroke px-3">
+        <label className="flex min-w-0 items-center gap-2">
+          <span className="prose-label text-fg-tertiary uppercase">
+            Creator
+          </span>
           <select
-            className="max-w-56 rounded border border-stroke bg-bg-1 p-1.5"
-            value={template}
-            onChange={(event) => setTemplate(event.target.value)}
-          >
-            <option value="">All templates</option>
-            {[...templates]
-              .filter(([id]) => id)
-              .sort((a, b) => a[1].localeCompare(b[1]))
-              .map(([id, label]) => (
-                <option key={id} value={id}>
-                  {label}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          Creator
-          <select
-            className="max-w-56 rounded border border-stroke bg-bg-1 p-1.5"
+            className="prose-body h-8 max-w-48 min-w-0 border-x border-stroke bg-bg px-2 text-fg hover:bg-bg-hover focus-visible:outline-accent-main-highlight disabled:opacity-50"
             value={creator}
-            onChange={(event) => setCreator(event.target.value)}
+            onChange={(event) => onCreatorChange(event.target.value)}
+            disabled={!usage}
           >
             <option value="">All creators</option>
+            {creator && !creators.has(creator) && (
+              <option value={creator}>{creator}</option>
+            )}
             {[...creators]
               .sort((a, b) => a[1].localeCompare(b[1]))
               .map(([id, name]) => (
@@ -115,104 +123,103 @@ export function PoolUsage({ pool }: { pool: string }) {
               ))}
           </select>
         </label>
+        {usage && (
+          <span className="prose-label text-fg-tertiary uppercase">
+            {visible.length} running ·{' '}
+            <time
+              dateTime={usage.observedAt}
+              title={new Date(usage.observedAt).toLocaleString()}
+            >
+              {new Date(usage.observedAt).toLocaleTimeString()}
+            </time>
+          </span>
+        )}
       </div>
-      {failed && (
-        <p role="status" className="text-sm">
-          Usage metrics are temporarily unavailable
-          {usage ? '. Showing the last snapshot.' : '.'}
-        </p>
-      )}
-      {!usage && !failed && (
-        <p role="status" className="text-sm">
-          Loading sandbox usage…
-        </p>
-      )}
-      {usage && (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-fg-tertiary">
-            <span>{visible.length} running sandboxes</span>
-            <span>Observed {new Date(usage.observedAt).toLocaleString()}</span>
-          </div>
-          {usage.partial && (
-            <p role="status" className="text-sm text-accent-warning-highlight">
-              Some sandbox or template data is unavailable.
-            </p>
-          )}
-          <div className="rounded-lg border border-stroke bg-bg-1 p-4">
-            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-fg-tertiary">
-              <span>0%</span>
-              <span
-                aria-hidden="true"
-                className="h-2 w-28 rounded"
-                style={{
-                  background:
-                    'linear-gradient(90deg, hsl(130 62% 42%), hsl(65 62% 42%), hsl(0 62% 42%))',
-                }}
-              />
-              <span>100%</span>
-              <span
-                className="ml-2 inline-block size-3 rounded-sm bg-fg-tertiary"
-                aria-hidden="true"
-              />
-              <span>No sample</span>
-            </div>
-            {visible.length === 0 && (
-              <p className="text-sm">No running sandboxes match this filter.</p>
-            )}
-            <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-3">
-              {metrics.map(([metric, title]) => (
-                <section
-                  key={metric}
-                  aria-label={title}
-                  className="min-w-0 rounded-lg border border-stroke p-3"
-                >
-                  <h2 className="mb-3 text-sm font-medium">{title}</h2>
-                  <div className="grid grid-cols-[repeat(auto-fill,14px)] gap-1">
-                    {visible.map((row) => {
-                      const percent = row[metric]
-                      const label = `${row.sandboxID} · ${row.alias || row.templateID || 'Unknown template'} · ${value(percent)}`
-                      return (
-                        <button
-                          type="button"
-                          key={row.sandboxID}
-                          aria-label={label}
-                          title={label}
-                          className={`size-3.5 rounded-sm bg-fg-tertiary hover:outline focus-visible:outline ${active === row.sandboxID ? 'outline outline-2 outline-offset-1 outline-accent-main-highlight' : ''}`}
-                          onFocus={() => setActive(row.sandboxID)}
-                          onPointerEnter={() => setActive(row.sandboxID)}
-                          onClick={() => setActive(row.sandboxID)}
-                          style={
-                            percent === null
-                              ? undefined
-                              : {
-                                  backgroundColor: `hsl(${130 * (1 - Math.min(100, percent) / 100)} 62% 42%)`,
-                                }
+
+      <div className="grid min-w-0 grid-cols-3 divide-x divide-stroke">
+        {metrics.map(([metric, title]) => (
+          <section key={metric} aria-label={title} className="min-w-0">
+            <h2 className="prose-label-highlight flex h-8 items-center border-b border-stroke px-3 text-fg uppercase">
+              {title}
+            </h2>
+            <div className="grid min-h-11 max-h-24 grid-cols-[repeat(auto-fill,12px)] content-start gap-[3px] overflow-y-auto p-3">
+              {visible.map((row) => {
+                const percent = row[metric]
+                const label = `${row.sandboxID} · ${row.alias || row.templateID || 'Unknown template'} · ${value(percent)}`
+                return (
+                  <button
+                    type="button"
+                    key={row.sandboxID}
+                    aria-label={label}
+                    title={label}
+                    className={`size-3 border border-stroke bg-bg-1 hover:outline focus-visible:outline ${active === row.sandboxID ? 'outline outline-1 outline-offset-1 outline-fg' : ''}`}
+                    onFocus={() => setActive(row.sandboxID)}
+                    onPointerEnter={() => setActive(row.sandboxID)}
+                    onClick={() => setActive(row.sandboxID)}
+                    style={
+                      percent === null
+                        ? undefined
+                        : {
+                            backgroundColor: `hsl(${130 * (1 - Math.min(100, percent) / 100)} 62% 42%)`,
                           }
-                        />
-                      )
-                    })}
-                  </div>
-                </section>
-              ))}
+                    }
+                  />
+                )
+              })}
             </div>
-            {selected && (
-              <p className="mt-3 break-all text-xs text-fg-tertiary">
-                {selected.sandboxID} ·{' '}
-                {selected.alias || selected.templateID || 'Unknown template'} ·{' '}
-                {selected.creator?.name ||
-                  selected.creator?.id ||
-                  'Unknown creator'}{' '}
-                ·{' '}
-                {metrics
-                  .map(
-                    ([metric, title]) => `${title} ${value(selected[metric])}`
-                  )
-                  .join(' · ')}
-              </p>
-            )}
-          </div>
-        </>
-      )}
+          </section>
+        ))}
+      </div>
+
+      <div className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 border-t border-stroke px-3 py-1.5">
+        <div className="prose-label flex shrink-0 items-center gap-1.5 text-fg-tertiary uppercase">
+          <span>0%</span>
+          <span
+            aria-hidden="true"
+            className="h-1.5 w-12"
+            style={{
+              background:
+                'linear-gradient(90deg, hsl(130 62% 42%), hsl(65 62% 42%), hsl(0 62% 42%))',
+            }}
+          />
+          <span>100%</span>
+          <span
+            className="ml-1 size-2 border border-stroke bg-bg-1"
+            aria-hidden="true"
+          />
+          <span>No sample</span>
+        </div>
+        {failed ? (
+          <output className="text-xs text-accent-warning-highlight">
+            {usage
+              ? 'Showing the last snapshot.'
+              : 'Usage metrics unavailable.'}
+          </output>
+        ) : !usage ? (
+          <output className="text-xs text-fg-tertiary">
+            Loading sandbox usage…
+          </output>
+        ) : usage.partial ? (
+          <output className="text-xs text-accent-warning-highlight">
+            Some sandbox data is unavailable.
+          </output>
+        ) : visible.length === 0 ? (
+          <p className="text-xs text-fg-tertiary">
+            No running sandboxes match this filter.
+          </p>
+        ) : selected ? (
+          <p className="min-w-0 flex-1 truncate font-mono text-xs text-fg-secondary">
+            {selected.sandboxID} ·{' '}
+            {selected.creator?.name ||
+              selected.creator?.id ||
+              'Unknown creator'}{' '}
+            ·{' '}
+            {metrics
+              .map(([metric, title]) => `${title} ${value(selected[metric])}`)
+              .join(' · ')}
+          </p>
+        ) : null}
+      </div>
     </section>
   )
 }

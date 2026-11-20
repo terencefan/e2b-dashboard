@@ -58,6 +58,14 @@ export async function runDashboardProxy(request: NextRequest) {
 
   if (isProtectedRoute(pathname)) {
     const selected = request.nextUrl.searchParams.get('pool')
+    if (pathname === '/pool/heatmap') {
+      const destination = new URL(PROTECTED_URLS.SANDBOXES, request.url)
+      const pool = selected ?? request.nextUrl.searchParams.get('ool')
+      if (pool === 'pilot' || pool === 'production') {
+        destination.searchParams.set('pool', pool)
+      }
+      return NextResponse.redirect(destination)
+    }
     if (selected !== 'pilot' && selected !== 'production') {
       const destination = request.nextUrl.clone()
       let pool = 'pilot'

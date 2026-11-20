@@ -21,6 +21,7 @@ interface SandboxesTableBodyProps {
   hasNextPage?: boolean
   isFetchingNextPage?: boolean
   fetchNextPage?: () => void
+  clearCreator?: () => void
 }
 
 export const SandboxesTableBody = ({
@@ -29,6 +30,7 @@ export const SandboxesTableBody = ({
   hasNextPage = false,
   isFetchingNextPage = false,
   fetchNextPage,
+  clearCreator,
 }: SandboxesTableBodyProps) => {
   'use no memo'
 
@@ -98,32 +100,40 @@ export const SandboxesTableBody = ({
   const isEmpty = centerRows.length === 0
 
   if (isEmpty) {
-    const emptyState = hasFilter ? (
-      <SandboxesListEmpty
-        title="No Results Found"
-        description="No sandboxes match your current filters."
-        actions={
-          <Button variant="secondary" onClick={resetFilters} className="w-full">
-            Reset Filters <CloseIcon className="text-fg-tertiary size-4" />
-          </Button>
-        }
-        className="h-full max-md:sticky max-md:left-0 max-md:w-[calc(100svw-1.5rem)]"
-      />
-    ) : (
-      <SandboxesListEmpty
-        title="No Sandboxes Yet"
-        description="Running and paused sandboxes can be observed here."
-        actions={
-          <Button variant="secondary" asChild className="w-full gap-2">
-            <a href="/docs/quickstart" target="_blank" rel="noopener">
-              <AddIcon />
-              Create a Sandbox
-            </a>
-          </Button>
-        }
-        className="h-full max-md:sticky max-md:left-0 max-md:w-[calc(100svw-1.5rem)]"
-      />
-    )
+    const emptyState =
+      hasFilter || clearCreator ? (
+        <SandboxesListEmpty
+          title="No Results Found"
+          description="No sandboxes match your current filters."
+          actions={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                resetFilters()
+                clearCreator?.()
+              }}
+              className="w-full"
+            >
+              Reset Filters <CloseIcon className="text-fg-tertiary size-4" />
+            </Button>
+          }
+          className="h-full max-md:sticky max-md:left-0 max-md:w-[calc(100svw-1.5rem)]"
+        />
+      ) : (
+        <SandboxesListEmpty
+          title="No Sandboxes Yet"
+          description="Running and paused sandboxes can be observed here."
+          actions={
+            <Button variant="secondary" asChild className="w-full gap-2">
+              <a href="/docs/quickstart" target="_blank" rel="noopener">
+                <AddIcon />
+                Create a Sandbox
+              </a>
+            </Button>
+          }
+          className="h-full max-md:sticky max-md:left-0 max-md:w-[calc(100svw-1.5rem)]"
+        />
+      )
 
     return (
       <DataTableBody className="h-[calc(100%-2rem-1px)] overflow-hidden">

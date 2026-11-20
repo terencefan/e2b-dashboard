@@ -91,6 +91,8 @@ interface SandboxesTableViewProps {
   hasNextPage?: boolean
   isFetchingNextPage?: boolean
   fetchNextPage?: () => void
+  creatorSandboxIDs?: ReadonlySet<string>
+  clearCreator?: () => void
 }
 
 function SandboxesTableView({
@@ -101,6 +103,8 @@ function SandboxesTableView({
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
+  creatorSandboxIDs,
+  clearCreator,
 }: SandboxesTableViewProps) {
   'use no memo'
 
@@ -137,11 +141,19 @@ function SandboxesTableView({
     [startedAtFilter, templateFilters, cpuCount, memoryMB]
   )
 
+  const creatorFilteredSandboxes = useMemo(
+    () =>
+      creatorSandboxIDs
+        ? sandboxes.filter((row) => creatorSandboxIDs.has(row.sandboxID))
+        : sandboxes,
+    [creatorSandboxIDs, sandboxes]
+  )
+
   const activeSorting = getSandboxListEffectiveSorting(sorting)
 
   const table = useReactTable<SandboxListRow>({
     columns,
-    data: sandboxes,
+    data: creatorFilteredSandboxes,
     state: {
       globalFilter,
       sorting: activeSorting,
@@ -181,7 +193,7 @@ function SandboxesTableView({
   const tableSorting = table.getState().sorting
 
   return (
-    <ClientOnly className="flex h-full min-h-0 flex-col p-3 md:max-w-[calc(100svw-var(--sidebar-width-active))] md:p-6">
+    <ClientOnly className="flex min-h-64 flex-1 flex-col">
       <SandboxesHeader
         table={table}
         onRefresh={refetch}
@@ -237,6 +249,7 @@ function SandboxesTableView({
             hasNextPage={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             fetchNextPage={fetchNextPage}
+            clearCreator={creatorSandboxIDs ? clearCreator : undefined}
           />
         </DataTable>
       </div>
@@ -244,7 +257,10 @@ function SandboxesTableView({
   )
 }
 
-export function NewSandboxesTable() {
+export function NewSandboxesTable({
+  creatorSandboxIDs,
+  clearCreator,
+}: Pick<SandboxesTableViewProps, 'creatorSandboxIDs' | 'clearCreator'>) {
   const trpc = useTRPC()
   const pollingInterval = useSandboxListTableStore(
     (state) => state.pollingInterval
@@ -285,6 +301,8 @@ export function NewSandboxesTable() {
       hasNextPage={hasNextPage}
       isFetchingNextPage={isFetchingNextPage}
       fetchNextPage={fetchNextPage}
+      creatorSandboxIDs={creatorSandboxIDs}
+      clearCreator={clearCreator}
     />
   )
 }

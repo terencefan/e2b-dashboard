@@ -3,13 +3,12 @@
 import micromatch from 'micromatch'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { useClientConfig } from '@/features/client-config-provider'
-import { SandboxIcon } from '@/ui/primitives/icons'
 import { SIDEBAR_MAIN_LINKS, type SidebarNavItem } from '@/configs/sidebar'
-
+import { useClientConfig } from '@/features/client-config-provider'
 import { useIsMobile } from '@/lib/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import { HoverPrefetchLink } from '@/ui/hover-prefetch-link'
+import { SandboxIcon } from '@/ui/primitives/icons'
 import {
   SIDEBAR_TRANSITION_CLASSNAMES,
   SidebarContent,
@@ -65,13 +64,6 @@ export default function DashboardSidebarContent() {
                 href: `/pool?pool=${executionPool}`,
                 icon: SandboxIcon,
                 activeMatch: '/pool',
-              },
-              {
-                label: 'Sandbox Heatmap',
-                group: 'Pool',
-                href: `/pool/heatmap?pool=${executionPool}`,
-                icon: SandboxIcon,
-                activeMatch: '/pool/heatmap',
               },
             ]
           : SIDEBAR_MAIN_LINKS
