@@ -14,6 +14,7 @@ interface SandboxesHeaderProps {
   onRefresh: () => void
   isRefreshing: boolean
   stateFilter: ReactNode
+  usageFilters?: ReactNode
 }
 
 export function SandboxesHeader({
@@ -21,6 +22,7 @@ export function SandboxesHeader({
   onRefresh,
   isRefreshing,
   stateFilter,
+  usageFilters,
 }: SandboxesHeaderProps) {
   'use no memo'
 
@@ -45,7 +47,10 @@ export function SandboxesHeader({
           <SearchInput />
         </div>
 
-        {stateFilter}
+        <div className="flex min-w-0 items-center gap-1">
+          {stateFilter}
+          {usageFilters}
+        </div>
 
         <Suspense fallback={null}>
           <SandboxesTableFilters className="w-full min-w-0 sm:w-auto" />

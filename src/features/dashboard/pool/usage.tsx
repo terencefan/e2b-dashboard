@@ -8,7 +8,7 @@ const metrics = [
   ['disk', 'Disk'],
 ] as const
 type Metric = (typeof metrics)[number][0]
-type SandboxUsage = {
+export type SandboxUsage = {
   sandboxID: string
   templateID: string
   alias?: string
@@ -68,85 +68,16 @@ export function usePoolUsage(pool: string) {
   return { usage, enabled, failed }
 }
 
-export function filterSandboxUsage(
-  sandboxes: SandboxUsage[],
-  template: string,
-  creator: string
-) {
-  return sandboxes.filter(
-    (row) =>
-      (!template || row.templateID === template) &&
-      (!creator || (row.creator?.id ?? 'unknown') === creator)
-  )
-}
-
-function UsageFilter({
-  label,
-  all,
-  options,
-  value,
-  onChange,
-  disabled,
-}: {
-  label: string
-  all: string
-  options: Map<string, string>
-  value: string
-  onChange: (value: string) => void
-  disabled: boolean
-}) {
-  return (
-    <label className="flex min-w-0 items-center gap-2">
-      <span className="prose-label text-fg-tertiary uppercase">{label}</span>
-      <select
-        className="prose-body h-8 max-w-48 min-w-0 border-x border-stroke bg-bg px-2 text-fg hover:bg-bg-hover focus-visible:outline-accent-main-highlight disabled:opacity-50"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        disabled={disabled}
-      >
-        <option value="">{all}</option>
-        {value && !options.has(value) && <option value={value}>{value}</option>}
-        {[...options]
-          .sort((a, b) => a[1].localeCompare(b[1]))
-          .map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-      </select>
-    </label>
-  )
-}
-
 export function PoolUsage({
   usage,
   failed,
-  creator,
-  onCreatorChange,
-  template,
-  onTemplateChange,
+  visible,
 }: {
   usage?: Usage
   failed: boolean
-  creator: string
-  onCreatorChange: (creator: string) => void
-  template: string
-  onTemplateChange: (template: string) => void
+  visible: SandboxUsage[]
 }) {
   const [active, setActive] = useState<string>()
-  const sandboxes = usage?.sandboxes ?? []
-  const creators = new Map(
-    sandboxes.map((row) => [
-      row.creator?.id ?? 'unknown',
-      row.creator?.name || row.creator?.id || 'Unknown creator',
-    ])
-  )
-  const templates = new Map(
-    sandboxes
-      .filter((row) => row.templateID)
-      .map((row) => [row.templateID, row.alias || row.templateID])
-  )
-  const visible = filterSandboxUsage(sandboxes, template, creator)
   const selected = visible.find((row) => row.sandboxID === active)
   const value = (percent: number | null) =>
     percent === null ? 'No sample' : `${percent.toFixed(1)}%`
@@ -156,38 +87,6 @@ export function PoolUsage({
       aria-label="Sandbox usage heatmap"
       className="shrink-0 border border-stroke bg-bg"
     >
-      <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-3 border-b border-stroke px-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-4">
-          <UsageFilter
-            label="Creator"
-            all="All creators"
-            options={creators}
-            value={creator}
-            onChange={onCreatorChange}
-            disabled={!usage}
-          />
-          <UsageFilter
-            label="Template"
-            all="All templates"
-            options={templates}
-            value={template}
-            onChange={onTemplateChange}
-            disabled={!usage}
-          />
-        </div>
-        {usage && (
-          <span className="prose-label text-fg-tertiary uppercase">
-            {visible.length} running ·{' '}
-            <time
-              dateTime={usage.observedAt}
-              title={new Date(usage.observedAt).toLocaleString()}
-            >
-              {new Date(usage.observedAt).toLocaleTimeString()}
-            </time>
-          </span>
-        )}
-      </div>
-
       <div className="grid min-w-0 grid-cols-3 divide-x divide-stroke">
         {metrics.map(([metric, title]) => (
           <section key={metric} aria-label={title} className="min-w-0">
@@ -271,6 +170,17 @@ export function PoolUsage({
               .join(' · ')}
           </p>
         ) : null}
+        {usage && (
+          <span className="prose-label ml-auto shrink-0 text-fg-tertiary uppercase">
+            {visible.length} running ·{' '}
+            <time
+              dateTime={usage.observedAt}
+              title={new Date(usage.observedAt).toLocaleString()}
+            >
+              {new Date(usage.observedAt).toLocaleTimeString()}
+            </time>
+          </span>
+        )}
       </div>
     </section>
   )
